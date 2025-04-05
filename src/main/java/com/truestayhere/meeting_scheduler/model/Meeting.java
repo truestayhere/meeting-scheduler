@@ -38,7 +38,7 @@ public class Meeting {
     @JoinTable( // Creates table for bidirectional many-to-many relationship
             name = "meeting_attendee",
             joinColumns = @JoinColumn(name = "meeting_id"),
-            inverseJoinColumns = @JoinColumn(name = "user_id")
+            inverseJoinColumns = @JoinColumn(name = "attendee_id")
     )
     private Set<Attendee> attendees = new HashSet<>(); // Avoiding duplicate attendees
 
