@@ -1,5 +1,9 @@
 package com.truestayhere.meeting_scheduler.service;
 
+import com.truestayhere.meeting_scheduler.dto.AttendeeDTO;
+import com.truestayhere.meeting_scheduler.dto.CreateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.UpdateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.mapper.AttendeeMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -17,45 +21,68 @@ import java.util.List;
 // (readOnly = true) sets default reading mode to optimize operations with data.
 public class AttendeeService {
     private final AttendeeRepository attendeeRepository;
+    private final AttendeeMapper attendeeMapper;
 
     // Basic CRUD functionality implementation:
 
-    // CREATE
+    // CREATE - Accepts a CreateAttendeeRequestDTO, returns AttendeeDTO
     @Transactional // It means that this method modifies data
-    public Attendee createAttendee(Attendee attendee) throws IllegalAccessException {
-        if (attendeeRepository.findByEmail(attendee.getEmail()).isPresent()) {
-            throw new IllegalAccessException("Attendee with email " + attendee.getEmail() + " already exists.");
+    public AttendeeDTO createAttendee(CreateAttendeeRequestDTO requestDTO) throws IllegalAccessException {
+        if (attendeeRepository.findByEmail(requestDTO.email()).isPresent()) {
+            throw new IllegalAccessException("Attendee with email " + requestDTO.email() + " already exists.");
         }
-        return attendeeRepository.save(attendee);
+
+        // --- (Add later) Input Validation --
+
+        // --- Save the Attendee ---
+
+        Attendee newAttendee = attendeeMapper.mapToAttendee(requestDTO);
+
+        Attendee savedAttendee = attendeeRepository.save(newAttendee);
+        return attendeeMapper.mapToAttendeeDTO(savedAttendee);
     }
 
-    // READ - All
-    public List<Attendee> getAllAttendees() {
-        return attendeeRepository.findAll();
+
+    // READ - All - Returns List<AttendeeDTO>
+    public List<AttendeeDTO> getAllAttendees() {
+        List<Attendee> attendees = attendeeRepository.findAll();
+        return attendeeMapper.mapToAttendeeDTOList(attendees);
     }
 
-    // READ - By ID
-    public Attendee getAttendeeById(Long id) {
-        return attendeeRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Attendee not found with id: " + id));
+    // READ - By ID - Accepts ID, returns AttendeeDTO
+    public AttendeeDTO getAttendeeById(Long id) {
+        Attendee foundAttendee = findAttendeeEntityById(id);
+        return attendeeMapper.mapToAttendeeDTO(foundAttendee);
     }
 
-    // UPDATE
+    // Helper method - Accepts ID, returns Attendee Entity
+    private Attendee findAttendeeEntityById(Long id) {
+        return attendeeRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Attendee not found with id: " + id));
+    }
+
+    // UPDATE - Accepts ID and UpdateAttendeeRequestDTO, returns AttendeeDTO
     @Transactional
-    public Attendee updateAttendee(Long id, Attendee attendeeDetails) {
-        Attendee existingAttendee = getAttendeeById(id);
+    public AttendeeDTO updateAttendee(Long id, UpdateAttendeeRequestDTO requestDTO) {
+        Attendee existingAttendee = findAttendeeEntityById(id);
 
-        existingAttendee.setName(attendeeDetails.getName());
+        // --- (Add later) Input Validation --
+
+        existingAttendee.setName(requestDTO.name());
         // (Add later) Need to check if the email is unique before updating!
-        existingAttendee.setEmail(attendeeDetails.getEmail());
+        existingAttendee.setEmail(requestDTO.email());
 
-        return attendeeRepository.save(existingAttendee);
+        Attendee savedAttendee = attendeeRepository.save(existingAttendee);
+        return attendeeMapper.mapToAttendeeDTO(savedAttendee);
     }
 
-    // DELETE
+    // DELETE - Accepts ID
     @Transactional
     public void deleteAttendee(Long id) {
-        Attendee existingAttendee = getAttendeeById(id); // if attendee is not found throws EntityNotFoundException
-        attendeeRepository.delete(existingAttendee);
+        if (!attendeeRepository.existsById(id)) {
+            throw new EntityNotFoundException("Attendee not found with id: " + id);
+        }
+        attendeeRepository.deleteById(id);
     }
 
 

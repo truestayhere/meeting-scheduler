@@ -1,5 +1,9 @@
 package com.truestayhere.meeting_scheduler.service;
 
+import com.truestayhere.meeting_scheduler.dto.CreateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.LocationDTO;
+import com.truestayhere.meeting_scheduler.dto.UpdateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.mapper.LocationMapper;
 import com.truestayhere.meeting_scheduler.model.Location;
 import com.truestayhere.meeting_scheduler.repository.LocationRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -16,43 +20,66 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class LocationService {
     private final LocationRepository locationRepository;
+    private final LocationMapper locationMapper;
 
     // Basic CRUD functionality implementation:
 
-    // CREATE
+    // CREATE - Accepts a CreateLocationRequestDTO, returns LocationDTO
     @Transactional
-    public Location addLocation(Location location) throws IllegalAccessException {
-        if (locationRepository.findByName(location.getName()).isPresent()) {
-            throw new IllegalAccessException("Location with name " + location.getName() + " already exists.");
+    public LocationDTO addLocation(CreateLocationRequestDTO requestDTO) throws IllegalAccessException {
+        if (locationRepository.findByName(requestDTO.name()).isPresent()) {
+            throw new IllegalAccessException("Location with name " + requestDTO.name() + " already exists.");
         }
-        return locationRepository.save(location);
+
+        // --- (Add later) Input Validation --
+
+        // --- Save the Location ---
+
+        Location newLocation = locationMapper.mapToLocation(requestDTO);
+
+        Location savedLocation = locationRepository.save(newLocation);
+        return locationMapper.mapToLocationDTO(savedLocation);
     }
 
-    // READ - All
-    public List<Location> getAllLocations() {
-        return locationRepository.findAll();
+    // READ - All - Returns List<LocationDTO>
+    public List<LocationDTO> getAllLocations() {
+        List<Location> locations = locationRepository.findAll();
+        return locationMapper.mapToLocationDTOList(locations);
     }
 
-    // READ - By ID
-    public Location getLocationById(Long id) {
-        return locationRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + id));
+    // READ - By ID - Accepts ID, returns LocationDTO
+    public LocationDTO getLocationById(Long id) {
+        Location foundLocation = findLocationEntityById(id);
+        return locationMapper.mapToLocationDTO(foundLocation);
     }
 
-    // UPDATE
-    public Location updateLocation(Long id, Location locationDetails) {
-        Location existingLocation = getLocationById(id);
+    // Helper method - Accepts ID, returns Location Entity
+    private Location findLocationEntityById(Long id) {
+        return locationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + id));
+    }
+
+    // UPDATE - Accepts ID and UpdateLocationRequestDTO, returns LocationDTO
+    public LocationDTO updateLocation(Long id, UpdateLocationRequestDTO requestDTO) {
+        Location existingLocation = findLocationEntityById(id);
+
+        // --- (Add later) Input Validation --
 
         // (Add later) Need to check if the name is unique before updating!
-        existingLocation.setName(locationDetails.getName());
-        existingLocation.setCapacity(locationDetails.getCapacity());
+        existingLocation.setName(requestDTO.name());
+        existingLocation.setCapacity(requestDTO.capacity());
 
-        return locationRepository.save(existingLocation);
+        Location savedLocation = locationRepository.save(existingLocation);
+        return locationMapper.mapToLocationDTO(savedLocation);
     }
 
-    // DELETE
+    // DELETE - Accepts ID
     @Transactional
     public void deleteLocation(Long id) {
-        Location existingLocation = getLocationById(id);
-        locationRepository.delete(existingLocation);
+        if (!locationRepository.existsById(id)) {
+            throw new EntityNotFoundException("Location not found with id: " + id);
+        }
+        locationRepository.deleteById(id);
     }
+
 }
