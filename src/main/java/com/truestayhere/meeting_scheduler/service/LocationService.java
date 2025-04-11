@@ -26,9 +26,9 @@ public class LocationService {
 
     // CREATE - Accepts a CreateLocationRequestDTO, returns LocationDTO
     @Transactional
-    public LocationDTO addLocation(CreateLocationRequestDTO requestDTO) throws IllegalAccessException {
+    public LocationDTO createLocation(CreateLocationRequestDTO requestDTO) throws IllegalArgumentException {
         if (locationRepository.findByName(requestDTO.name()).isPresent()) {
-            throw new IllegalAccessException("Location with name " + requestDTO.name() + " already exists.");
+            throw new IllegalArgumentException("Location with name " + requestDTO.name() + " already exists.");
         }
 
         // --- (Add later) Input Validation --

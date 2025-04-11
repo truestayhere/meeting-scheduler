@@ -27,9 +27,9 @@ public class AttendeeService {
 
     // CREATE - Accepts a CreateAttendeeRequestDTO, returns AttendeeDTO
     @Transactional // It means that this method modifies data
-    public AttendeeDTO createAttendee(CreateAttendeeRequestDTO requestDTO) throws IllegalAccessException {
+    public AttendeeDTO createAttendee(CreateAttendeeRequestDTO requestDTO) throws IllegalArgumentException {
         if (attendeeRepository.findByEmail(requestDTO.email()).isPresent()) {
-            throw new IllegalAccessException("Attendee with email " + requestDTO.email() + " already exists.");
+            throw new IllegalArgumentException("Attendee with email " + requestDTO.email() + " already exists.");
         }
 
         // --- (Add later) Input Validation --

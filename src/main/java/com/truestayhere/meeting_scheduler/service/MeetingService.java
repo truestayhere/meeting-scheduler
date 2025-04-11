@@ -33,7 +33,7 @@ public class MeetingService {
 
     // CREATE - Accepts a CreateMeetingRequestDTO, returns MeetingDTO
     @Transactional
-    public MeetingDTO createMeeting(CreateMeetingRequestDTO requestDTO) throws IllegalAccessException {
+    public MeetingDTO createMeeting(CreateMeetingRequestDTO requestDTO) throws IllegalArgumentException {
 
         // --- (Add later) Input Validation --
 
@@ -45,7 +45,7 @@ public class MeetingService {
         );
 
         if(!existingMeetings.isEmpty()) {
-            throw new IllegalAccessException("Meeting with the same location, start time and end time already exists.");
+            throw new IllegalArgumentException("Meeting with the same location, start time and end time already exists.");
         }
 
         // --- (Add later) Conflict/Overlap Check ---
