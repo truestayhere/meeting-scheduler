@@ -5,6 +5,7 @@ import com.truestayhere.meeting_scheduler.dto.CreateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.LocationDTO;
 import com.truestayhere.meeting_scheduler.dto.UpdateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.service.LocationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +17,7 @@ import java.util.List;
 @RequestMapping("/api/locations")
 @RequiredArgsConstructor
 public class LocationController {
-    private LocationService locationService;
+    private final LocationService locationService;
 
     // GET /api/locations - Get all locations
     @GetMapping
@@ -34,14 +35,14 @@ public class LocationController {
 
     // POST /api/locations - Create a new location
     @PostMapping
-    public ResponseEntity<LocationDTO> createLocation(@RequestBody CreateLocationRequestDTO requestDTO) {
+    public ResponseEntity<LocationDTO> createLocation(@Valid @RequestBody CreateLocationRequestDTO requestDTO) {
         LocationDTO createdLocation = locationService.createLocation(requestDTO);
         return new ResponseEntity<>(createdLocation, HttpStatus.CREATED); // 201 CREATED
     }
 
     // PUT /api/locations/id - Update location by ID
     @PutMapping("/{id}")
-    public ResponseEntity<LocationDTO> updateLocationById(@PathVariable Long id, @RequestBody UpdateLocationRequestDTO requestDTO) {
+    public ResponseEntity<LocationDTO> updateLocationById(@PathVariable Long id, @Valid @RequestBody UpdateLocationRequestDTO requestDTO) {
         LocationDTO updatedLocation = locationService.updateLocation(id, requestDTO);
         return ResponseEntity.ok(updatedLocation); // 200 OK
     }

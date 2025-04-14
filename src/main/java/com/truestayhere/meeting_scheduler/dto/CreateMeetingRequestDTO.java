@@ -2,15 +2,29 @@ package com.truestayhere.meeting_scheduler.dto;
 
 // Data validation will be added later!
 
+import com.truestayhere.meeting_scheduler.dto.validation.StartBeforeEnd;
+import jakarta.validation.constraints.*;
+
 import java.time.LocalDateTime;
 import java.util.Set;
 
 // Request send from client to create a new meeting
+@StartBeforeEnd
 public record CreateMeetingRequestDTO(
+        @NotBlank(message = "Meeting title must not be blank.")
+        @Size(max = 200, message = "Meeting title must not exceed 200 characters.")
         String title,
+
+        @NotNull(message = "Meeting start time cannot be null.")
+        @FutureOrPresent(message = "Meeting start time cannot be set in the past.")
         LocalDateTime startTime,
+
+        @NotNull(message = "Meeting end time cannot be null.")
         LocalDateTime endTime,
-        Long locationId, // We only need to know a location id, not all location data to create a meeting
-        Set<Long> attendeeIds // No need to send all attendee data, only id's to create a meeting
-) {
+
+        @NotNull(message = "Meeting location ID cannot be null.")
+        Long locationId,
+
+        @NotEmpty(message = "Attendee list cannot be empty.") // @NotEmpty used for Collections
+        Set<@NotNull Long> attendeeIds) {
 }

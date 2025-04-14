@@ -5,6 +5,7 @@ import com.truestayhere.meeting_scheduler.dto.AttendeeDTO;
 import com.truestayhere.meeting_scheduler.dto.CreateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.UpdateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.service.AttendeeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +36,8 @@ public class AttendeeController {
 
     // POST api/attendees - Create a new attendee
     @PostMapping
-    public ResponseEntity<AttendeeDTO> createAttendee(@RequestBody CreateAttendeeRequestDTO requestDTO) {
+    public ResponseEntity<AttendeeDTO> createAttendee(@Valid @RequestBody CreateAttendeeRequestDTO requestDTO) {
+        // @Valid tells Spring that if the input is not valid throw MethodArgumentNotValidException automatically
         // @RequestBody tells Spring to deserialize the JSON request body into the DTO
         AttendeeDTO createdAttendee = attendeeService.createAttendee(requestDTO);
         return new ResponseEntity<>(createdAttendee, HttpStatus.CREATED); // Returns 201 CREATED status code with the new attendee DTO
@@ -43,7 +45,7 @@ public class AttendeeController {
 
     // PUT api/attendees/id - Update attendee by ID
     @PutMapping("/{id}")
-    public ResponseEntity<AttendeeDTO> updateAttendee(@PathVariable Long id, @RequestBody UpdateAttendeeRequestDTO requestDTO) {
+    public ResponseEntity<AttendeeDTO> updateAttendee(@PathVariable Long id, @Valid @RequestBody UpdateAttendeeRequestDTO requestDTO) {
         AttendeeDTO updatedAttendee = attendeeService.updateAttendee(id, requestDTO);
         return ResponseEntity.ok(updatedAttendee); // Returns 200 OK status code with location DTO
     }

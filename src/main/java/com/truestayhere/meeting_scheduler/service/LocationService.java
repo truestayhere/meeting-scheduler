@@ -60,6 +60,7 @@ public class LocationService {
     }
 
     // UPDATE - Accepts ID and UpdateLocationRequestDTO, returns LocationDTO
+    @Transactional
     public LocationDTO updateLocation(Long id, UpdateLocationRequestDTO requestDTO) {
         Location existingLocation = findLocationEntityById(id);
 

@@ -20,8 +20,8 @@ public class Location {
     @Column(nullable = false, unique = true, length = 150)
     private String name;
 
-    @Column
-    private int capacity;
+    @Column(nullable = true)
+    private Integer capacity;
 
     public Location(String name) {
         this.name = name;
