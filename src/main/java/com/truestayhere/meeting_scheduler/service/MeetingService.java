@@ -10,6 +10,8 @@ import com.truestayhere.meeting_scheduler.repository.LocationRepository;
 import com.truestayhere.meeting_scheduler.repository.MeetingRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,11 +31,17 @@ public class MeetingService {
     private final AttendeeRepository attendeeRepository;
     private final MeetingMapper meetingMapper;
 
+    private static final Logger log = LoggerFactory.getLogger(MeetingService.class);
+
     // Basic CRUD functionality implementation:
 
     // CREATE - Accepts a CreateMeetingRequestDTO, returns MeetingDTO
     @Transactional
     public MeetingDTO createMeeting(CreateMeetingRequestDTO requestDTO) throws IllegalArgumentException {
+        log.debug("Entering create meeting with title prefix: {}, locationId: {}, attendee count: {}",
+                requestDTO.title().substring(0, Math.min(requestDTO.title().length(), 10)), // Logging title prefix only
+                requestDTO.locationId(),
+                requestDTO.attendeeIds() != null ? requestDTO.attendeeIds().size() : 0);
 
         // --- (Add later) Input Validation --
 
@@ -53,7 +61,10 @@ public class MeetingService {
         // --- Fetch Location and Attendees Data ---
 
         Location location = findLocationEntityById(requestDTO.locationId());
+        log.debug("Fetched location entity with ID: {}", location.getId());
+
         Set<Attendee> attendees = findAttendeesById(requestDTO.attendeeIds());
+        log.debug("Fetched {} attendee entities", attendees.size());
 
         // --- Save the Meeting ---
 
@@ -64,7 +75,11 @@ public class MeetingService {
         newMeeting.setLocation(location);
         newMeeting.setAttendees(attendees);
 
+        log.debug("Attempting to save new meeting");
+
         Meeting savedMeeting = meetingRepository.save(newMeeting);
+
+        log.info("Successfully created meeting with ID: {}", savedMeeting.getId());
         return meetingMapper.mapToMeetingDTO(savedMeeting);
     }
 
@@ -108,6 +123,8 @@ public class MeetingService {
     // UPDATE - Accepts ID and UpdateMeetingRequestDTO, returns MeetingDTO
     @Transactional
     public MeetingDTO updateMeeting(Long id, UpdateMeetingRequestDTO requestDTO) {
+        log.debug("Attempting to update meeting with ID: {}", id);
+
         Meeting existingMeeting = findMeetingEntityById(id);
 
         // --- (Add later) Input Validation --
@@ -117,7 +134,10 @@ public class MeetingService {
         // --- Fetch Location and Attendees Data ---
 
         Location location = findLocationEntityById(requestDTO.locationId());
+        log.debug("Fetched location entity with ID: {}", location.getId());
+
         Set<Attendee> attendees = findAttendeesById(requestDTO.attendeeIds());
+        log.debug("Fetched {} attendee entities", attendees.size());
 
         // --- Save the Meeting ---
 
@@ -127,16 +147,24 @@ public class MeetingService {
         existingMeeting.setLocation(location);
         existingMeeting.setAttendees(attendees);
 
+        log.debug("Attempting to save updated meeting");
+
         Meeting savedMeeting = meetingRepository.save(existingMeeting);
+
+        log.info("Successfully updated meeting with ID: {}", savedMeeting.getId());
         return meetingMapper.mapToMeetingDTO(savedMeeting);
     }
 
     // DELETE - Accepts ID
     @Transactional
     public void deleteMeeting(Long id) {
+        log.debug("Attempting to delete meeting with ID: {}", id);
+
         if (!meetingRepository.existsById(id)) {
             throw new EntityNotFoundException("Meeting not found with id: " + id);
         }
+
+        log.info("Successfully deleted meeting with ID: {}", id);
         meetingRepository.deleteById(id);
     }
 

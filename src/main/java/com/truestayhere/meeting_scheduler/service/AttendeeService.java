@@ -7,6 +7,8 @@ import com.truestayhere.meeting_scheduler.mapper.AttendeeMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,11 +25,15 @@ public class AttendeeService {
     private final AttendeeRepository attendeeRepository;
     private final AttendeeMapper attendeeMapper;
 
+    private static final Logger log = LoggerFactory.getLogger(AttendeeService.class);
+
     // Basic CRUD functionality implementation:
 
     // CREATE - Accepts a CreateAttendeeRequestDTO, returns AttendeeDTO
     @Transactional // It means that this method modifies data
     public AttendeeDTO createAttendee(CreateAttendeeRequestDTO requestDTO) throws IllegalArgumentException {
+        log.debug("Attempting to create attendee with email: {}", requestDTO.email());
+
         if (attendeeRepository.findByEmail(requestDTO.email()).isPresent()) {
             throw new IllegalArgumentException("Attendee with email " + requestDTO.email() + " already exists.");
         }
@@ -39,6 +45,8 @@ public class AttendeeService {
         Attendee newAttendee = attendeeMapper.mapToAttendee(requestDTO);
 
         Attendee savedAttendee = attendeeRepository.save(newAttendee);
+
+        log.info("Successfully created attendee with ID: {}", savedAttendee.getId());
         return attendeeMapper.mapToAttendeeDTO(savedAttendee);
     }
 
@@ -58,12 +66,14 @@ public class AttendeeService {
     // Helper method - Accepts ID, returns Attendee Entity
     private Attendee findAttendeeEntityById(Long id) {
         return attendeeRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Attendee not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Attendee not found with ID: " + id));
     }
 
     // UPDATE - Accepts ID and UpdateAttendeeRequestDTO, returns AttendeeDTO
     @Transactional
     public AttendeeDTO updateAttendee(Long id, UpdateAttendeeRequestDTO requestDTO) {
+        log.debug("Attempting to update attendee with ID: {}", id);
+
         Attendee existingAttendee = findAttendeeEntityById(id);
 
         // --- (Add later) Input Validation --
@@ -73,15 +83,21 @@ public class AttendeeService {
         existingAttendee.setEmail(requestDTO.email());
 
         Attendee savedAttendee = attendeeRepository.save(existingAttendee);
+
+        log.info("Successfully updated attendee with ID: {}", id);
         return attendeeMapper.mapToAttendeeDTO(savedAttendee);
     }
 
     // DELETE - Accepts ID
     @Transactional
     public void deleteAttendee(Long id) {
+        log.debug("Attempting to delete attendee with ID: {}", id);
+
         if (!attendeeRepository.existsById(id)) {
-            throw new EntityNotFoundException("Attendee not found with id: " + id);
+            throw new EntityNotFoundException("Attendee not found with ID: " + id);
         }
+
+        log.info("Successfully deleted attendee with ID: {}", id);
         attendeeRepository.deleteById(id);
     }
 

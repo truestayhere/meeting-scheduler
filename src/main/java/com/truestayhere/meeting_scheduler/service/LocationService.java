@@ -8,6 +8,8 @@ import com.truestayhere.meeting_scheduler.model.Location;
 import com.truestayhere.meeting_scheduler.repository.LocationRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,11 +24,15 @@ public class LocationService {
     private final LocationRepository locationRepository;
     private final LocationMapper locationMapper;
 
+    private static final Logger log = LoggerFactory.getLogger(LocationService.class);
+
     // Basic CRUD functionality implementation:
 
     // CREATE - Accepts a CreateLocationRequestDTO, returns LocationDTO
     @Transactional
     public LocationDTO createLocation(CreateLocationRequestDTO requestDTO) throws IllegalArgumentException {
+        log.debug("Attempting to create location with name: {}", requestDTO.name());
+
         if (locationRepository.findByName(requestDTO.name()).isPresent()) {
             throw new IllegalArgumentException("Location with name " + requestDTO.name() + " already exists.");
         }
@@ -38,6 +44,8 @@ public class LocationService {
         Location newLocation = locationMapper.mapToLocation(requestDTO);
 
         Location savedLocation = locationRepository.save(newLocation);
+
+        log.info("Successfully created location with ID: {}", savedLocation.getId());
         return locationMapper.mapToLocationDTO(savedLocation);
     }
 
@@ -62,6 +70,8 @@ public class LocationService {
     // UPDATE - Accepts ID and UpdateLocationRequestDTO, returns LocationDTO
     @Transactional
     public LocationDTO updateLocation(Long id, UpdateLocationRequestDTO requestDTO) {
+        log.debug("Attempting to update location with ID: {}", id);
+
         Location existingLocation = findLocationEntityById(id);
 
         // --- (Add later) Input Validation --
@@ -71,15 +81,21 @@ public class LocationService {
         existingLocation.setCapacity(requestDTO.capacity());
 
         Location savedLocation = locationRepository.save(existingLocation);
+
+        log.info("Successfully updated location with ID: {}", savedLocation.getId());
         return locationMapper.mapToLocationDTO(savedLocation);
     }
 
     // DELETE - Accepts ID
     @Transactional
     public void deleteLocation(Long id) {
+        log.debug("Attempting to delete location with ID: {}", id);
+
         if (!locationRepository.existsById(id)) {
             throw new EntityNotFoundException("Location not found with id: " + id);
         }
+
+        log.info("Successfully deleted location with ID: {}", id);
         locationRepository.deleteById(id);
     }
 

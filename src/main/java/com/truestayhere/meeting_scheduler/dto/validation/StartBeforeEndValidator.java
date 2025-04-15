@@ -2,10 +2,13 @@ package com.truestayhere.meeting_scheduler.dto.validation;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 
 public class StartBeforeEndValidator implements ConstraintValidator<StartBeforeEnd, Object> {
+    private static final Logger log = LoggerFactory.getLogger(StartBeforeEndValidator.class);
 
     @Override
     public boolean isValid(Object value, ConstraintValidatorContext context) {
@@ -37,7 +40,7 @@ public class StartBeforeEndValidator implements ConstraintValidator<StartBeforeE
             return startTime.isBefore(endTime);
 
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            System.err.println("Error accessing startTime/endTime fields for validation: " + e.getMessage());
+            log.warn("Error accessing startTime/endTime fields for validation: {}", e.getMessage());
             return false;
         }
     }

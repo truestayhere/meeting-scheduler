@@ -4,6 +4,8 @@ package com.truestayhere.meeting_scheduler.exception;
 import com.truestayhere.meeting_scheduler.dto.ErrorResponseDTO;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +22,15 @@ import java.util.stream.Collectors;
 @ControllerAdvice // Marks this class as a global exception handler
 public class GlobalExceptionHandler {
 
-    // (add later) SLF4J Logging with Logback
+    // "static" ensures that there is only one Logger instance per class
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // Handler for @Valid Bean Validation errors
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDTO> handleValidationExceptions(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
+
+        log.warn("Validation failed for request {}: {}", request.getRequestURI(), ex.getMessage());
 
         // It's ok to use forEach() here as well, but stream() improves readability
         List<String> errors = ex.getBindingResult()
@@ -56,6 +61,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleEntityNotFoundException(
             EntityNotFoundException ex, HttpServletRequest request) {
 
+        log.warn("Resource not found for request {}: {}", request.getRequestURI(), ex.getMessage());
+
         // Map to single-message ErrorResponseDTO
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
                 HttpStatus.NOT_FOUND.value(),
@@ -70,6 +77,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponseDTO> handleIllegalArgumentException(
             IllegalArgumentException ex, HttpServletRequest request) {
+
+        log.warn("Invalid argument/state for request {}: {}", request.getRequestURI(), ex.getMessage());
 
         // Map to single-message ErrorResponseDTO
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
@@ -95,8 +104,7 @@ public class GlobalExceptionHandler {
             message = "Data integrity violation: Check unique constraints or foreign keys.";
         }
 
-        // (add later)
-        // log.warn("DataIntegrityViolationException: {} on path {}", message, request.getRequestURI(), ex);
+        log.warn("DataIntegrityViolationException: {} on path {}", message, request.getRequestURI(), ex);
 
         // Map to single-message ErrorResponseDTO
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
@@ -113,8 +121,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex, HttpServletRequest request) {
 
-        // (add later)
-        // log.warn("HttpMessageNotReadableException: {} on path {}", ex.getMessage(), request.getRequestURI());
+        log.warn("HttpMessageNotReadableException: {} on path {}", ex.getMessage(), request.getRequestURI());
 
         // Map to single-message ErrorResponseDTO
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
@@ -130,8 +137,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleHttpMethodNotSupported(
             HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
 
-        // (add later)
-        // log.warn("HttpRequestMethodNotSupportedException: Method '{}' not supported for path {}", ex.getMethod(), request.getRequestURI());
+        log.warn("HttpRequestMethodNotSupportedException: Method '{}' not supported for path {}", ex.getMethod(), request.getRequestURI());
 
         // Build string containing supported methods
         StringBuilder supportedMethods = new StringBuilder();
@@ -161,9 +167,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleGenericException(
             Exception ex, HttpServletRequest request) {
 
-        // Log error to the console
-        System.err.println("Unhandled exception occurred: " + ex.getMessage());
-        ex.printStackTrace();
+        log.error("Unhandled exception occurred processing request {}: {}", request.getRequestURI(), ex.getMessage(), ex);
+        // passing the exception "ex" as a last argument includes the stack trace in the log output
 
         // Map to single-message ErrorResponseDTO
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
