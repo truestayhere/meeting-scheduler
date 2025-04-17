@@ -1,6 +1,7 @@
 package com.truestayhere.meeting_scheduler.service;
 
 import com.truestayhere.meeting_scheduler.dto.*;
+import com.truestayhere.meeting_scheduler.exception.MeetingConflictException;
 import com.truestayhere.meeting_scheduler.mapper.MeetingMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.model.Location;
@@ -203,7 +204,7 @@ public class MeetingService {
             log.warn(errorMessage);
 
             // (add later) Custom MeetingConflictException
-            throw new IllegalArgumentException(errorMessage);
+            throw new MeetingConflictException(errorMessage);
         }
         log.debug("No location conflict found for locationId: {}", locationId);
     }
@@ -242,7 +243,7 @@ public class MeetingService {
                 log.warn(errorMessage);
 
                 // (add later) Custom MeetingConflictException
-                throw new IllegalArgumentException(errorMessage);
+                throw new MeetingConflictException(errorMessage);
             }
             log.debug("No conflicts found for attendeeId: {}", attendeeId);
         }

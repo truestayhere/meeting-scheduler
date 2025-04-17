@@ -134,6 +134,8 @@ public class GlobalExceptionHandler {
     }
 
 
+    // Handler for unsupported method calls
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponseDTO> handleHttpMethodNotSupported(
             HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
 
@@ -154,7 +156,7 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
 
-        // Must add "Allow" header for 405 status according to HTTP specification
+        // Must add "Allow" header for status 405 according to HTTP specification
         return ResponseEntity
                 .status(HttpStatus.METHOD_NOT_ALLOWED) // 405 METHOD NOT ALLOWED
                 .header("Allow", supportedMethods.toString().trim())
@@ -163,7 +165,26 @@ public class GlobalExceptionHandler {
     }
 
 
+    // Handler for scheduling conflicts/overlaps
+    @ExceptionHandler(MeetingConflictException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMeetingConflictException(
+            MeetingConflictException ex, HttpServletRequest request) {
+
+        log.warn("MeetingConflictException: {} on path {}", ex.getMessage(), request.getRequestURI());
+
+        // Map to single-message ErrorResponseDTO
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                "Scheduling conflict",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT); // 409 CONFLICT
+    }
+
+
     // Handler for any other unhandled exceptions
+    @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleGenericException(
             Exception ex, HttpServletRequest request) {
 
