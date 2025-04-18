@@ -5,6 +5,7 @@ import com.truestayhere.meeting_scheduler.dto.CreateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.UpdateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.mapper.AttendeeMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
+import com.truestayhere.meeting_scheduler.model.Location;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -14,8 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
-// Data validation and security will be added later!
 
 @Service
 @RequiredArgsConstructor // Lombok generates constructor with fields that are final
@@ -27,18 +28,23 @@ public class AttendeeService {
 
     private static final Logger log = LoggerFactory.getLogger(AttendeeService.class);
 
-    // Basic CRUD functionality implementation:
 
-    // CREATE - Accepts a CreateAttendeeRequestDTO, returns AttendeeDTO
+    // === CRUD METHODS ===
+
+
+    /**
+     * Creates an attendee based on provided data.
+     *
+     * @param requestDTO A CreateAttendeeRequestDTO with the attendee data.
+     * @return An AttendeeDTO with the created attendee data.
+     */
     @Transactional // It means that this method modifies data
-    public AttendeeDTO createAttendee(CreateAttendeeRequestDTO requestDTO) throws IllegalArgumentException {
+    public AttendeeDTO createAttendee(CreateAttendeeRequestDTO requestDTO) {
         log.debug("Attempting to create attendee with email: {}", requestDTO.email());
 
-        if (attendeeRepository.findByEmail(requestDTO.email()).isPresent()) {
-            throw new IllegalArgumentException("Attendee with email " + requestDTO.email() + " already exists.");
-        }
+        // --- Duplicates Check ---
 
-        // --- (Add later) Input Validation --
+        checkDuplicateAttendee(requestDTO.email(), null);
 
         // --- Save the Attendee ---
 
@@ -51,35 +57,49 @@ public class AttendeeService {
     }
 
 
-    // READ - All - Returns List<AttendeeDTO>
+    /**
+     * Fetches all attendees.
+     *
+     * @return A list of AttendeeDTOs for all attendees.
+     */
     public List<AttendeeDTO> getAllAttendees() {
         List<Attendee> attendees = attendeeRepository.findAll();
         return attendeeMapper.mapToAttendeeDTOList(attendees);
     }
 
-    // READ - By ID - Accepts ID, returns AttendeeDTO
+
+    /**
+     * Fetches an attendee based on provided ID.
+     *
+     * @param id The ID of the attendee.
+     * @return An AttendeeDTO for the found attendee.
+     */
     public AttendeeDTO getAttendeeById(Long id) {
         Attendee foundAttendee = findAttendeeEntityById(id);
         return attendeeMapper.mapToAttendeeDTO(foundAttendee);
     }
 
-    // Helper method - Accepts ID, returns Attendee Entity
-    private Attendee findAttendeeEntityById(Long id) {
-        return attendeeRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Attendee not found with ID: " + id));
-    }
 
-    // UPDATE - Accepts ID and UpdateAttendeeRequestDTO, returns AttendeeDTO
+    /**
+     * Updates an attendee based on provided ID and update data.
+     *
+     * @param id         The ID og the attendee to be updated.
+     * @param requestDTO The UpdateAttendeeRequestDTO with the updated data.
+     * @return An AttendeeDTO for the updated attendee.
+     */
     @Transactional
     public AttendeeDTO updateAttendee(Long id, UpdateAttendeeRequestDTO requestDTO) {
         log.debug("Attempting to update attendee with ID: {}", id);
 
         Attendee existingAttendee = findAttendeeEntityById(id);
 
-        // --- (Add later) Input Validation --
+        // --- Duplicates Check ---
+
+        checkDuplicateAttendee(requestDTO.email(), id);
+
+        // --- Save the Attendee ---
 
         existingAttendee.setName(requestDTO.name());
-        // (Add later) Need to check if the email is unique before updating!
         existingAttendee.setEmail(requestDTO.email());
 
         Attendee savedAttendee = attendeeRepository.save(existingAttendee);
@@ -88,7 +108,12 @@ public class AttendeeService {
         return attendeeMapper.mapToAttendeeDTO(savedAttendee);
     }
 
-    // DELETE - Accepts ID
+
+    /**
+     * Deletes an attendee by ID.
+     *
+     * @param id The ID of the attendee.
+     */
     @Transactional
     public void deleteAttendee(Long id) {
         log.debug("Attempting to delete attendee with ID: {}", id);
@@ -101,5 +126,37 @@ public class AttendeeService {
         attendeeRepository.deleteById(id);
     }
 
+
+    // === HELPER METHODS ===
+
+
+    // Accepts ID, returns Attendee Entity
+    private Attendee findAttendeeEntityById(Long id) {
+        return attendeeRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Attendee not found with ID: " + id));
+    }
+
+
+    // Attendee Duplicates Check - Accepts String, ID, throws IllegalArgumentException
+    private void checkDuplicateAttendee(String email, Long idToExclude) {
+
+        log.debug("Checking duplicates for attendee with email: {}", email);
+
+        Optional<Attendee> duplicateAttendeeOpt = attendeeRepository.findByEmail(email);
+
+        if (duplicateAttendeeOpt.isPresent()) {
+            Attendee duplicateAttendee = duplicateAttendeeOpt.get();
+
+            if (idToExclude == null || !duplicateAttendee.getId().equals(idToExclude)) {
+                String errorMessage = (idToExclude == null)
+                        ? "Attendee with email " + email + " already exists."
+                        : "Another attendee (" + duplicateAttendee.getId() + ") already exists with email " + email + ".";
+                log.warn(errorMessage);
+                throw new IllegalArgumentException(errorMessage);
+            }
+        }
+
+        log.debug("No duplicates found for the provided attendee email.");
+    }
 
 }

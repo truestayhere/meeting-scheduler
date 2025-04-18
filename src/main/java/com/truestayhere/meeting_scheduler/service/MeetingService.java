@@ -22,8 +22,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-// Complex data validation and security will be added later!
-// More complex overlap/conflict checking will be added later!
 
 @Service
 @RequiredArgsConstructor
@@ -36,11 +34,18 @@ public class MeetingService {
 
     private static final Logger log = LoggerFactory.getLogger(MeetingService.class);
 
-    // Basic CRUD functionality implementation:
 
-    // CREATE - Accepts a CreateMeetingRequestDTO, returns MeetingDTO
+    // === CRUD METHODS ===
+
+
+    /**
+     * Creates a meeting based on provided data.
+     *
+     * @param requestDTO A CreateMeetingRequestDTO with the meeting data.
+     * @return A MeetingDTO with the created meeting data.
+     */
     @Transactional
-    public MeetingDTO createMeeting(CreateMeetingRequestDTO requestDTO) throws IllegalArgumentException {
+    public MeetingDTO createMeeting(CreateMeetingRequestDTO requestDTO) {
         log.debug("Entering create meeting with title prefix: {}, locationId: {}, attendee count: {}",
                 requestDTO.title().substring(0, Math.min(requestDTO.title().length(), 10)), // Logging title prefix only
                 requestDTO.locationId(),
@@ -48,15 +53,7 @@ public class MeetingService {
 
         // --- Duplicates Check ---
 
-        List<Meeting> existingMeetings = meetingRepository.findByLocation_idAndStartTimeAndEndTime(
-                requestDTO.locationId(),
-                requestDTO.startTime(),
-                requestDTO.endTime()
-        );
-
-        if(!existingMeetings.isEmpty()) {
-            throw new IllegalArgumentException("Meeting with the same location, start time and end time already exists.");
-        }
+        checkMeetingDuplicates(requestDTO.locationId(), requestDTO.startTime(), requestDTO.endTime(), null);
 
         // --- Conflict/Overlap Check ---
 
@@ -90,24 +87,46 @@ public class MeetingService {
         return meetingMapper.mapToMeetingDTO(savedMeeting);
     }
 
-    // READ - All - Returns List<MeetingDTO>
+
+    /**
+     * Fetches all meetings.
+     *
+     * @return A list of MeetingDTOs for all meetings.
+     */
     public List<MeetingDTO> getAllMeetings() {
         List<Meeting> meetings = meetingRepository.findAll();
         return meetingMapper.mapToMeetingDTOList(meetings);
     }
 
-    // READ - By ID - Accepts ID, returns MeetingDTO
+
+    /**
+     * Fetches a meeting based on provided ID.
+     *
+     * @param id The ID of the meeting.
+     * @return A MeetingDTO for the found meeting.
+     */
     public MeetingDTO getMeetingById(Long id) {
         Meeting foundMeeting = findMeetingEntityById(id);
         return meetingMapper.mapToMeetingDTO(foundMeeting);
     }
 
-    // UPDATE - Accepts ID and UpdateMeetingRequestDTO, returns MeetingDTO
+
+    /**
+     * Updates a meeting based on provided ID and update data.
+     *
+     * @param id         The ID of the meeting to be updated.
+     * @param requestDTO The UpdateMeetingRequestDTO with the updated data.
+     * @return A MeetingDTO for the updated meeting.
+     */
     @Transactional
     public MeetingDTO updateMeeting(Long id, UpdateMeetingRequestDTO requestDTO) {
         log.debug("Attempting to update meeting with ID: {}", id);
 
         Meeting existingMeeting = findMeetingEntityById(id);
+
+        // --- Duplicates Check ---
+
+        checkMeetingDuplicates(requestDTO.locationId(), requestDTO.startTime(), requestDTO.endTime(), id);
 
         // --- Conflict/Overlap Check ---
 
@@ -140,7 +159,12 @@ public class MeetingService {
         return meetingMapper.mapToMeetingDTO(savedMeeting);
     }
 
-    // DELETE - Accepts ID
+
+    /**
+     * Deletes a meeting by ID.
+     *
+     * @param id The ID of the meeting.
+     */
     @Transactional
     public void deleteMeeting(Long id) {
         log.debug("Attempting to delete meeting with ID: {}", id);
@@ -156,9 +180,10 @@ public class MeetingService {
 
     /**
      * Finds meetings for a specific attendee withing a given time range.
+     *
      * @param attendeeId The ID of the attendee.
-     * @param rangeStart The start of the time range (inclusive)
-     * @param rangeEnd The end of the time range (inclusive)
+     * @param rangeStart The start of the time range (inclusive).
+     * @param rangeEnd   The end of the time range (inclusive).
      * @return A list of MeetingDTOs for the attendee in that range.
      */
     public List<MeetingDTO> getMeetingsForAttendeeInRange(Long attendeeId, LocalDateTime rangeStart, LocalDateTime rangeEnd) {
@@ -176,11 +201,13 @@ public class MeetingService {
         return meetingMapper.mapToMeetingDTOList(meetings);
     }
 
+
     /**
      * Finds meetings for a specific location within a given time range.
+     *
      * @param locationId The ID of the location.
-     * @param rangeStart The start of the time range (inclusive)
-     * @param rangeEnd The end of the time range (inclusive)
+     * @param rangeStart The start of the time range (inclusive).
+     * @param rangeEnd   The end of the time range (inclusive).
      * @return A list of MeetingDTOs for the location in that range.
      */
     public List<MeetingDTO> getMeetingsForLocationInRange(Long locationId, LocalDateTime rangeStart, LocalDateTime rangeEnd) {
@@ -199,19 +226,21 @@ public class MeetingService {
     }
 
 
-
     // === HELPER METHODS ===
+
 
     // Accepts ID, returns Meeting Entity
     private Meeting findMeetingEntityById(Long id) {
         return meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Meeting not found with id: " + id));
     }
 
+
     // Accepts ID, returns Location Entity
     private Location findLocationEntityById(Long id) {
         return locationRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + id));
     }
+
 
     // Accepts Set<ID>, returns Set<Attendee>
     private Set<Attendee> findAttendeesById(Set<Long> idSet) {
@@ -228,7 +257,7 @@ public class MeetingService {
     }
 
 
-    // Location Conflict Check (meeting overlap) - Accepts ID, LocalDateTime, throws IllegalArgumentException
+    // Location Conflict Check (meeting overlap) - Accepts ID, LocalDateTime, throws MeetingConflictException
     private void checkLocationConflict(Long locationId, LocalDateTime startTime, LocalDateTime endTime, Long meetingIdToExclude) {
         log.debug("Checking location conflict for locationId: {}, startTime: {}, endTime: {}", locationId, startTime, endTime);
 
@@ -242,7 +271,7 @@ public class MeetingService {
                     .toList(); // returns an immutable list
         }
 
-        // if conflicting meetings found - throw IllegalArgumentException
+        // if conflicting meetings found - throw MeetingConflictException
         if (!conflictMeetings.isEmpty()) {
             String conflictMeetingIds = conflictMeetings.stream()
                     .map(m -> m.getId().toString())
@@ -250,14 +279,13 @@ public class MeetingService {
             String errorMessage = String.format("Location conflict detected. Location ID %d is booked during the requested time by the meeting(s) with ID(s): %s", locationId, conflictMeetingIds);
             log.warn(errorMessage);
 
-            // (add later) Custom MeetingConflictException
             throw new MeetingConflictException(errorMessage);
         }
         log.debug("No location conflict found for locationId: {}", locationId);
     }
 
 
-    // Attendee conflict Check (meeting overlap) - Accepts, ID, LocalDateTime, throws IllegalArgumentException
+    // Attendee conflict Check (meeting overlap) - Accepts ID, LocalDateTime, throws MeetingConflictException
     private void checkAttendeeConflicts(Set<Long> attendeeIds, LocalDateTime startTime, LocalDateTime endTime, Long meetingIdToExclude) {
         if (attendeeIds == null || attendeeIds.isEmpty()) {
             log.debug("No attendees provided, skipping attendee conflict check.");
@@ -267,7 +295,7 @@ public class MeetingService {
         log.debug("Checking attendee conflicts for attendeeIds: {}, startTime: {}, endTime: {}", attendeeIds, startTime, endTime);
 
         // for each attendee id in a list perform conflict check
-        for (Long attendeeId: attendeeIds) {
+        for (Long attendeeId : attendeeIds) {
             log.debug("Checking conflicts for attendeeId: {}", attendeeId);
 
             // fetch conflicting meetings from the database
@@ -280,7 +308,7 @@ public class MeetingService {
                         .toList();
             }
 
-            // if conflicting meetings found - throw IllegalArgumentException
+            // if conflicting meetings found - throw MeetingConflictException
             if (!conflictingMeetings.isEmpty()) {
                 String conflictingMeetingsIds = conflictingMeetings.stream()
                         .map(m -> m.getId().toString())
@@ -289,12 +317,38 @@ public class MeetingService {
 
                 log.warn(errorMessage);
 
-                // (add later) Custom MeetingConflictException
                 throw new MeetingConflictException(errorMessage);
             }
             log.debug("No conflicts found for attendeeId: {}", attendeeId);
         }
         log.debug("No attendee conflicts found for the provided list.");
+    }
+
+
+    // Meeting Duplicates Check - Accepts ID, LocalDateTime, throws IllegalArgumentException
+    private void checkMeetingDuplicates(Long locationId, LocalDateTime startTime, LocalDateTime endTime, Long meetingIdToExclude) {
+
+        log.debug("Checking duplicates for a meeting with locationId: {}, startTime: {}, endTime: {}", locationId, startTime, endTime);
+
+        List<Meeting> duplicateMeetings = meetingRepository.findByLocation_idAndStartTimeAndEndTime(
+                locationId,
+                startTime,
+                endTime
+        );
+
+        // remove an excluded meeting from the list (for the meeting update scenario)
+        if (meetingIdToExclude != null) {
+            duplicateMeetings = duplicateMeetings.stream()
+                    .filter(meeting -> !meeting.getId().equals(meetingIdToExclude))
+                    .toList();
+        }
+
+        if (!duplicateMeetings.isEmpty()) {
+            log.warn("Meeting conflict detected. Meeting with with locationId: {}, startTime: {}, endTime: {} already exists.", locationId, startTime, endTime);
+            throw new IllegalArgumentException("Meeting with the same location, start time and end time already exists.");
+        }
+
+        log.debug("No duplicates found for the provided meeting.");
     }
 
 }

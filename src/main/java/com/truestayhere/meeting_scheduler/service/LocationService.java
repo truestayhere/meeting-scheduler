@@ -5,6 +5,7 @@ import com.truestayhere.meeting_scheduler.dto.LocationDTO;
 import com.truestayhere.meeting_scheduler.dto.UpdateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.mapper.LocationMapper;
 import com.truestayhere.meeting_scheduler.model.Location;
+import com.truestayhere.meeting_scheduler.model.Meeting;
 import com.truestayhere.meeting_scheduler.repository.LocationRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -13,9 +14,10 @@ import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
-// Data validation and security will be added later!
 
 @Service
 @RequiredArgsConstructor
@@ -26,18 +28,23 @@ public class LocationService {
 
     private static final Logger log = LoggerFactory.getLogger(LocationService.class);
 
-    // Basic CRUD functionality implementation:
 
-    // CREATE - Accepts a CreateLocationRequestDTO, returns LocationDTO
+    // === CRUD METHODS ===
+
+
+    /**
+     * Creates a location based on provided data.
+     *
+     * @param requestDTO A CreateLocationRequestDTO with the location data.
+     * @return A LocationDTO with the created location data.
+     */
     @Transactional
-    public LocationDTO createLocation(CreateLocationRequestDTO requestDTO) throws IllegalArgumentException {
+    public LocationDTO createLocation(CreateLocationRequestDTO requestDTO) {
         log.debug("Attempting to create location with name: {}", requestDTO.name());
 
-        if (locationRepository.findByName(requestDTO.name()).isPresent()) {
-            throw new IllegalArgumentException("Location with name " + requestDTO.name() + " already exists.");
-        }
+        // --- Duplicates Check ---
 
-        // --- (Add later) Input Validation --
+        checkDuplicateLocation(requestDTO.name(), null);
 
         // --- Save the Location ---
 
@@ -49,34 +56,49 @@ public class LocationService {
         return locationMapper.mapToLocationDTO(savedLocation);
     }
 
-    // READ - All - Returns List<LocationDTO>
+
+    /**
+     * Fetches all locations.
+     *
+     * @return A list of LocationDTOs for all locations.
+     */
     public List<LocationDTO> getAllLocations() {
         List<Location> locations = locationRepository.findAll();
         return locationMapper.mapToLocationDTOList(locations);
     }
 
-    // READ - By ID - Accepts ID, returns LocationDTO
+
+    /**
+     * Fetches a location based on provided ID.
+     *
+     * @param id The ID of the location.
+     * @return A LocationDTO for the found location.
+     */
     public LocationDTO getLocationById(Long id) {
         Location foundLocation = findLocationEntityById(id);
         return locationMapper.mapToLocationDTO(foundLocation);
     }
 
-    // Helper method - Accepts ID, returns Location Entity
-    private Location findLocationEntityById(Long id) {
-        return locationRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + id));
-    }
 
-    // UPDATE - Accepts ID and UpdateLocationRequestDTO, returns LocationDTO
+    /**
+     * Updates a location based on provided ID and update data.
+     *
+     * @param id         The ID of the location to be updated,
+     * @param requestDTO The UpdateLocationRequestDTO with the updated data.
+     * @return A LocationDTO for the updated location.
+     */
     @Transactional
     public LocationDTO updateLocation(Long id, UpdateLocationRequestDTO requestDTO) {
         log.debug("Attempting to update location with ID: {}", id);
 
         Location existingLocation = findLocationEntityById(id);
 
-        // --- (Add later) Input Validation --
+        // --- Duplicates Check ---
 
-        // (Add later) Need to check if the name is unique before updating!
+        checkDuplicateLocation(requestDTO.name(), id);
+
+        // --- Save the Location ---
+
         existingLocation.setName(requestDTO.name());
         existingLocation.setCapacity(requestDTO.capacity());
 
@@ -86,7 +108,12 @@ public class LocationService {
         return locationMapper.mapToLocationDTO(savedLocation);
     }
 
-    // DELETE - Accepts ID
+
+    /**
+     * Deletes a location by ID.
+     *
+     * @param id The ID of the location.
+     */
     @Transactional
     public void deleteLocation(Long id) {
         log.debug("Attempting to delete location with ID: {}", id);
@@ -97,6 +124,38 @@ public class LocationService {
 
         log.info("Successfully deleted location with ID: {}", id);
         locationRepository.deleteById(id);
+    }
+
+
+    // === HELPER METHODS ===
+
+
+    // Accepts ID, returns Location Entity
+    private Location findLocationEntityById(Long id) {
+        return locationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + id));
+    }
+
+    // Location Duplicates Check - Accepts String, ID, throws IllegalArgumentException
+    private void checkDuplicateLocation(String name, Long idToExclude) {
+
+        log.debug("Checking duplicates for location with name: {}", name);
+
+        Optional<Location> duplicateLocationOpt = locationRepository.findByName(name);
+
+        if (duplicateLocationOpt.isPresent()) {
+            Location duplicateLocation = duplicateLocationOpt.get();
+
+            if (idToExclude == null || !duplicateLocation.getId().equals(idToExclude)) {
+                String errorMessage = (idToExclude == null)
+                        ? "Location with name '" + name + "' already exists."
+                        : "Another location (" + duplicateLocation.getId() + ") already exists with name '" + name + "'.";
+                log.warn(errorMessage);
+                throw new IllegalArgumentException(errorMessage);
+            }
+        }
+
+        log.debug("No duplicates found for the provided location name.");
     }
 
 }
