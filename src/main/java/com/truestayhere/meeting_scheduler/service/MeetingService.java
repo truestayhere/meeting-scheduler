@@ -146,12 +146,59 @@ public class MeetingService {
         log.debug("Attempting to delete meeting with ID: {}", id);
 
         if (!meetingRepository.existsById(id)) {
-            throw new EntityNotFoundException("Meeting not found with id: " + id);
+            throw new EntityNotFoundException("Meeting not found with ID: " + id);
         }
 
         log.info("Successfully deleted meeting with ID: {}", id);
         meetingRepository.deleteById(id);
     }
+
+
+    /**
+     * Finds meetings for a specific attendee withing a given time range.
+     * @param attendeeId The ID of the attendee.
+     * @param rangeStart The start of the time range (inclusive)
+     * @param rangeEnd The end of the time range (inclusive)
+     * @return A list of MeetingDTOs for the attendee in that range.
+     */
+    public List<MeetingDTO> getMeetingsForAttendeeInRange(Long attendeeId, LocalDateTime rangeStart, LocalDateTime rangeEnd) {
+        log.debug("Fetching meetings for attendee ID: {} between {} and {}", attendeeId, rangeStart, rangeEnd);
+
+        // Check if attendee exists
+        if (!attendeeRepository.existsById(attendeeId)) {
+            log.warn("Attempted to get schedule for non-existent attendee ID: {}", attendeeId);
+            return List.of(); // Return an empty list
+        }
+
+        List<Meeting> meetings = meetingRepository.findByAttendees_idAndStartTimeBetween(attendeeId, rangeStart, rangeEnd);
+
+        log.info("Found {} meetings for attendee ID: {} in the specified range.", meetings.size(), attendeeId);
+        return meetingMapper.mapToMeetingDTOList(meetings);
+    }
+
+    /**
+     * Finds meetings for a specific location within a given time range.
+     * @param locationId The ID of the location.
+     * @param rangeStart The start of the time range (inclusive)
+     * @param rangeEnd The end of the time range (inclusive)
+     * @return A list of MeetingDTOs for the location in that range.
+     */
+    public List<MeetingDTO> getMeetingsForLocationInRange(Long locationId, LocalDateTime rangeStart, LocalDateTime rangeEnd) {
+        log.debug("Fetching meetings for location ID: {} between {} and {}", locationId, rangeStart, rangeEnd);
+
+        // Check if location exists
+        if (!locationRepository.existsById(locationId)) {
+            log.warn("Attempted to get schedule for non-existent location ID: {}", locationId);
+            return List.of(); // Return an empty list
+        }
+
+        List<Meeting> meetings = meetingRepository.findByLocation_idAndStartTimeBetween(locationId, rangeStart, rangeEnd);
+
+        log.info("Found {} meetings for location ID: {} in the specified range.", meetings.size(), locationId);
+        return meetingMapper.mapToMeetingDTOList(meetings);
+    }
+
+
 
     // === HELPER METHODS ===
 
@@ -229,7 +276,7 @@ public class MeetingService {
             // remove an excluded meeting from the list (for the meeting update scenario)
             if (meetingIdToExclude != null) {
                 conflictingMeetings = conflictingMeetings.stream()
-                        .filter(meeting -> meeting.getId().equals(meetingIdToExclude))
+                        .filter(meeting -> !meeting.getId().equals(meetingIdToExclude))
                         .toList();
             }
 

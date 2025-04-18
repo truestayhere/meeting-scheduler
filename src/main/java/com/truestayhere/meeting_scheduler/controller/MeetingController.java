@@ -7,10 +7,12 @@ import com.truestayhere.meeting_scheduler.dto.UpdateMeetingRequestDTO;
 import com.truestayhere.meeting_scheduler.service.MeetingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -31,6 +33,27 @@ public class MeetingController {
     public ResponseEntity<MeetingDTO> getMeetingById(@PathVariable Long id) {
         MeetingDTO meeting = meetingService.getMeetingById(id);
         return ResponseEntity.ok(meeting); // 200 OK
+    }
+
+    // GET /api/meetings/byAttendee/{attendeeId}?start=...&end=...
+    // DateTimeFormat expects format like 2024-07-30T10:00:00
+    @GetMapping("/byAttendee/{attendeeId}")
+    public ResponseEntity<List<MeetingDTO>> getMeetingsByAttendeeAndRange(
+            @PathVariable Long attendeeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+        List<MeetingDTO> meetings = meetingService.getMeetingsForAttendeeInRange(attendeeId, start, end);
+        return ResponseEntity.ok(meetings); // 200 OK
+    }
+
+    // GET /api/meetings/byLocation/{locationId}?start=...&end=...
+    @GetMapping("/byLocation/{locationId}")
+    public ResponseEntity<List<MeetingDTO>> getMeetingsByLocationAndRange(
+            @PathVariable Long locationId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+        List<MeetingDTO> meetings = meetingService.getMeetingsForLocationInRange(locationId, start, end);
+        return ResponseEntity.ok(meetings);
     }
 
     // POST /api/meetings - Create a new meeting
