@@ -6,6 +6,7 @@ import com.truestayhere.meeting_scheduler.dto.UpdateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.model.Location;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -57,6 +58,12 @@ public class LocationMapper {
         location.setName(requestDTO.name());
         location.setCapacity(requestDTO.capacity());
 
+        // Default working start time 9:00
+        location.setWorkingStartTime(requestDTO.workingStartTime());
+
+        // Default working end time 17:00
+        location.setWorkingEndTime(requestDTO.workingEndTime());
+
         return location;
     }
 
@@ -69,6 +76,13 @@ public class LocationMapper {
 
         location.setName(requestDTO.name());
         location.setCapacity(requestDTO.capacity());
+
+        // Default working start time 9:00
+        location.setWorkingStartTime(requestDTO.workingStartTime());
+
+        // Default working end time 17:00
+        location.setWorkingEndTime(requestDTO.workingEndTime());
+
 
         return location;
     }

@@ -7,6 +7,7 @@ import com.truestayhere.meeting_scheduler.dto.UpdateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -51,10 +52,19 @@ public class AttendeeMapper {
         if (requestDTO == null) {
             return null;
         }
-        return new Attendee(
+
+        Attendee attendee = new Attendee(
                 requestDTO.name(),
                 requestDTO.email()
         );
+
+        // Default working start time 9:00
+        attendee.setWorkingStartTime(requestDTO.workingStartTime());
+
+        // Default working end time 17:00
+        attendee.setWorkingEndTime(requestDTO.workingEndTime());
+
+        return attendee;
     }
 
     // Map from UpdateAttendeeRequestDTO to Attendee Entity
@@ -62,9 +72,18 @@ public class AttendeeMapper {
         if (requestDTO == null) {
             return null;
         }
-        return new Attendee(
+
+        Attendee attendee = new Attendee(
                 requestDTO.name(),
                 requestDTO.email()
         );
+
+        // Default working start time 9:00
+        attendee.setWorkingStartTime(requestDTO.workingStartTime());
+
+        // Default working end time 17:00
+        attendee.setWorkingEndTime(requestDTO.workingEndTime());
+
+        return attendee;
     }
 }

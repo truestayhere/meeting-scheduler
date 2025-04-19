@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -25,6 +26,12 @@ public class Attendee {
 
     @Column(nullable = false, unique = true, length = 100)
     private String email;
+
+    @Column(name = "working_start_time")
+    private LocalTime workingStartTime;
+
+    @Column(name = "working_end_time")
+    private LocalTime workingEndTime;
 
     // Connection to meeting_attendee join table
     @ManyToMany(mappedBy = "attendees")

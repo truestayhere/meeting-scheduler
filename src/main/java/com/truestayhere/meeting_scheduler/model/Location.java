@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalTime;
+
 @Entity
 @Table(name = "location")
 @Getter
@@ -20,8 +22,13 @@ public class Location {
     @Column(nullable = false, unique = true, length = 150)
     private String name;
 
-    @Column(nullable = true)
     private Integer capacity;
+
+    @Column(name = "working_start_time")
+    private LocalTime workingStartTime;
+
+    @Column(name = "working_end_time")
+    private LocalTime workingEndTime;
 
     public Location(String name) {
         this.name = name;
