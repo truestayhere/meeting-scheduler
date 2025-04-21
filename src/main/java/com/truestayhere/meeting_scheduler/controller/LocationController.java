@@ -1,16 +1,21 @@
 package com.truestayhere.meeting_scheduler.controller;
 
 
+import com.truestayhere.meeting_scheduler.dto.AvailableSlotDTO;
 import com.truestayhere.meeting_scheduler.dto.CreateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.LocationDTO;
 import com.truestayhere.meeting_scheduler.dto.UpdateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.service.LocationService;
+import com.truestayhere.meeting_scheduler.service.MeetingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -18,6 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LocationController {
     private final LocationService locationService;
+    private final MeetingService meetingService;
 
     // GET /api/locations - Get all locations
     @GetMapping
@@ -52,6 +58,15 @@ public class LocationController {
     public ResponseEntity<Void> deleteLocationById(@PathVariable Long id) {
         locationService.deleteLocation(id);
         return ResponseEntity.noContent().build(); // 204 NO CONTENT
+    }
+
+    // GET /api/locations/id/availability?date=YYYY-MM-DD
+    @GetMapping("/{id}/availability")
+    public ResponseEntity<List<AvailableSlotDTO>> getLocationAvailability(
+            @PathVariable Long id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        List<AvailableSlotDTO> availableSlots = meetingService.getAvailableTimeForLocation(id, date);
+        return ResponseEntity.ok(availableSlots);
     }
 
 

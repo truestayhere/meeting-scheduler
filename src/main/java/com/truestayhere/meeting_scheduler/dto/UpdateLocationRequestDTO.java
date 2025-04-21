@@ -1,11 +1,13 @@
 package com.truestayhere.meeting_scheduler.dto;
 
+import com.truestayhere.meeting_scheduler.dto.validation.ValidWorkingHours;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalTime;
 
+@ValidWorkingHours
 public record UpdateLocationRequestDTO(
 
         @NotBlank(message = "Location name cannot be blank.")
@@ -15,10 +17,7 @@ public record UpdateLocationRequestDTO(
         @Min(value = 1, message = "Capacity must be at least 1 if provided.")
         Integer capacity,
 
-        @NotBlank(message = "Location working start time cannot be blank.")
         LocalTime workingStartTime,
-
-        @NotBlank(message = "Location working end time cannot be blank.")
         LocalTime workingEndTime
 ) {
 }

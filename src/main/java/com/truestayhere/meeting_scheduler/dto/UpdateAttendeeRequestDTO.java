@@ -1,11 +1,13 @@
 package com.truestayhere.meeting_scheduler.dto;
 
+import com.truestayhere.meeting_scheduler.dto.validation.ValidWorkingHours;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalTime;
 
+@ValidWorkingHours
 public record UpdateAttendeeRequestDTO(
 
         @NotBlank(message = "Attendee name cannot be blank.")
@@ -17,10 +19,7 @@ public record UpdateAttendeeRequestDTO(
         @Size(max = 100, message = "Email cannot exceed 100 characters.")
         String email,
 
-        @NotBlank(message = "Attendee working start time cannot be blank.")
         LocalTime workingStartTime,
-
-        @NotBlank(message = "Attendee working end time cannot be blank.")
         LocalTime workingEndTime
 ) {
 }

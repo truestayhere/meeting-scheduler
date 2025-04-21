@@ -4,6 +4,8 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanWrapperImpl;
+import org.springframework.beans.BeansException;
 
 import java.time.LocalDateTime;
 
@@ -13,22 +15,18 @@ public class StartBeforeEndValidator implements ConstraintValidator<StartBeforeE
     @Override
     public boolean isValid(Object value, ConstraintValidatorContext context) {
         try {
-            // Validator assumes that there are fields startTime and endTime in value object
-            // (Not the best implementation)
-            var startTimeField = value.getClass().getDeclaredField("startTime");
-            var endTimeField = value.getClass().getDeclaredField("endTime");
-            startTimeField.setAccessible(true);
-            endTimeField.setAccessible(true);
+            BeanWrapperImpl beanWrapper = new BeanWrapperImpl(value);
 
             // make private fields accessible
-            Object startTimeObj = startTimeField.get(value);
-            Object endTimeObj = endTimeField.get(value);
+            Object startTimeObj = beanWrapper.getPropertyValue("startTime");
+            Object endTimeObj = beanWrapper.getPropertyValue("endTime");
 
             if (startTimeObj == null || endTimeObj == null) {
                 return false;
             }
 
             if (!(startTimeObj instanceof LocalDateTime) || !(endTimeObj instanceof LocalDateTime)) {
+                log.error("startTime or endTime fields are not of type LocalDateTime for object: {}", value);
                 return false;
             }
 
@@ -39,8 +37,8 @@ public class StartBeforeEndValidator implements ConstraintValidator<StartBeforeE
             // validation logic
             return startTime.isBefore(endTime);
 
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            log.warn("Error accessing startTime/endTime fields for validation: {}", e.getMessage());
+        } catch (BeansException e) {
+            log.error("Unexpected error during @StartBeforeEnd validation on object {}: {}", value, e.getMessage(), e);
             return false;
         }
     }

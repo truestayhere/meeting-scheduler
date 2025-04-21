@@ -16,10 +16,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.time.LocalTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -33,6 +33,10 @@ public class MeetingService {
     private final MeetingMapper meetingMapper;
 
     private static final Logger log = LoggerFactory.getLogger(MeetingService.class);
+
+    // Default working hours
+    private static final LocalTime DEFAULT_WORKING_START_TIME = LocalTime.of(9, 0);
+    private static final LocalTime DEFAULT_WORKING_END_TIME = LocalTime.of(17, 0);
 
 
     // === CRUD METHODS ===
@@ -70,7 +74,7 @@ public class MeetingService {
         Set<Attendee> attendees = findAttendeesById(requestDTO.attendeeIds());
         log.debug("Fetched {} attendee entities", attendees.size());
 
-        // --- Save the Meeting ---
+        // --- Creating Meeting ---
 
         log.debug("Attempting to save new meeting");
 
@@ -80,6 +84,13 @@ public class MeetingService {
         newMeeting.setEndTime(requestDTO.endTime());
         newMeeting.setLocation(location);
         newMeeting.setAttendees(attendees);
+
+        // --- Working Hours Check ---
+
+        log.debug("Checking if meeting time is within location working hours.");
+        checkMeetingWithinLocationWorkingHours(newMeeting);
+
+        // --- Save the Meeting ---
 
         Meeting savedMeeting = meetingRepository.save(newMeeting);
 
@@ -143,13 +154,20 @@ public class MeetingService {
         Set<Attendee> attendees = findAttendeesById(requestDTO.attendeeIds());
         log.debug("Fetched {} attendee entities", attendees.size());
 
-        // --- Save the Meeting ---
+        // --- Creating Meeting ---
 
         existingMeeting.setTitle(requestDTO.title());
         existingMeeting.setStartTime(requestDTO.startTime());
         existingMeeting.setEndTime(requestDTO.endTime());
         existingMeeting.setLocation(location);
         existingMeeting.setAttendees(attendees);
+
+        // --- Working Hours Check ---
+
+        log.debug("Checking if updated meeting time is within location working hours.");
+        checkMeetingWithinLocationWorkingHours(existingMeeting);
+
+        // --- Save the Meeting ---
 
         log.debug("Attempting to save updated meeting");
 
@@ -223,6 +241,84 @@ public class MeetingService {
 
         log.info("Found {} meetings for location ID: {} in the specified range.", meetings.size(), locationId);
         return meetingMapper.mapToMeetingDTOList(meetings);
+    }
+
+
+    /**
+     * Finds available time slots for a specific meeting within the working hours window on a specific day.
+     * @param id The ID of the location.
+     * @param date The date of the working day.
+     * @return A list of AvailableSlotDTO with available time slots for the location on that date.
+     */
+    public List<AvailableSlotDTO> getAvailableTimeForLocation(Long id, LocalDate date) {
+        log.debug("Finding available time slots for locationId: {} on date: {}", id, date);
+
+        // fetch the location
+        Location location = findLocationEntityById(id);
+
+        // Get working hours from location or default values
+        LocalTime startOfDay = location.getWorkingStartTime() != null ?
+                location.getWorkingStartTime() : DEFAULT_WORKING_START_TIME;
+        LocalTime endOfDay = location.getWorkingEndTime() != null ?
+                location.getWorkingEndTime() : DEFAULT_WORKING_END_TIME;
+
+        // --- Handle Time Window Logic ---
+
+        LocalDateTime windowStart;
+        LocalDateTime windowEnd;
+
+        if (endOfDay.isBefore(startOfDay)) {
+            windowStart = date.atTime(startOfDay);
+            windowEnd = date.plusDays(1).atTime(endOfDay);
+            log.debug("Overnight shift detected for location {}.", id);
+        } else {
+            windowStart = date.atTime(startOfDay);
+            windowEnd = date.atTime(endOfDay);
+        }
+
+        // --- End Time Window Logic Handling ---
+
+        log.debug("Working time window for location {}: {} to {}", id, windowStart, windowEnd);
+
+        // Fetch meetings active in the working time window
+        List<Meeting> existingMeetings = meetingRepository.findByLocation_idAndStartTimeBeforeAndEndTimeAfter(id, windowEnd, windowStart);
+
+        // Sort meetings by start time
+        existingMeetings.sort(Comparator.comparing(Meeting::getStartTime));
+
+        log.debug("Found {} booked meetings, sorted by start time.", existingMeetings.size());
+
+        List<AvailableSlotDTO> availableSlots = new ArrayList<>();
+        // Set pointer at the start of working time-window
+        LocalDateTime currentPointer = windowStart;
+
+        // Calculating available time slots
+        for (Meeting meeting: existingMeetings) {
+            // Not taking into account time before or after the time-window
+            LocalDateTime meetingStart = max(meeting.getStartTime(), windowStart);
+            LocalDateTime meetingEnd = min(meeting.getEndTime(), windowEnd);
+
+            log.trace("Processing booked meeting: ID {}, Window Start: {}, Window End: {}", meeting.getId(), meetingStart, meetingEnd);
+
+            // If there is a gap between currentPointer and meeting start - add time slot
+            if (meetingStart.isAfter(currentPointer)) {
+                log.trace("Found available slot: {} to {}", currentPointer, meetingStart);
+                availableSlots.add(new AvailableSlotDTO(currentPointer, meetingStart));
+            }
+
+            // Move a pointer to the end of the meeting (or not move in case meeting overlap)
+            currentPointer = max(currentPointer, meetingEnd);
+            log.trace("Pointer moved to: {}", currentPointer);
+        }
+
+        // In case there is a time between last meeting end and working time window end
+        if (windowEnd.isAfter(currentPointer)) {
+            log.trace("Found final available slot: {} to {}", currentPointer, windowEnd);
+            availableSlots.add(new AvailableSlotDTO(currentPointer, windowEnd));
+        }
+
+        log.info("Calculated {} available time slots for locationId: {} on date: {}", availableSlots.size(), id, date);
+        return availableSlots;
     }
 
 
@@ -349,6 +445,63 @@ public class MeetingService {
         }
 
         log.debug("No duplicates found for the provided meeting.");
+    }
+
+    // Meeting time-window within Location's working hours Check - Accepts Meeting, throws IllegalArgumentException
+    private void checkMeetingWithinLocationWorkingHours(Meeting meeting) {
+        Location location = meeting.getLocation();
+
+        if (location == null) {
+            return;
+        }
+
+        LocalTime locationStart = location.getWorkingStartTime() != null ?
+                location.getWorkingStartTime() : DEFAULT_WORKING_START_TIME;
+        LocalTime locationEnd = location.getWorkingEndTime() != null ?
+                location.getWorkingEndTime() : DEFAULT_WORKING_END_TIME;
+
+        LocalTime meetingStartTimeOfDay = meeting.getStartTime().toLocalTime();
+        LocalTime meetingEndTimeOfDay = meeting.getEndTime().toLocalTime();
+
+        if (meetingStartTimeOfDay.isBefore(locationStart)) {
+            String errorMessage = String.format("Meeting start time (%s) is before location's working start time (%s).", meetingStartTimeOfDay, locationStart);
+            log.warn("Working hours violation: {}", errorMessage);
+            throw new IllegalArgumentException(errorMessage);
+        }
+
+        if (meetingEndTimeOfDay.isAfter(locationEnd)) {
+            String errorMessage = String.format("Meeting end time (%s) is after location's working end time (%s).", meetingEndTimeOfDay, locationEnd);
+            log.warn("Working hours violation: {}", errorMessage);
+            throw new IllegalArgumentException(errorMessage);
+        }
+
+        log.debug("Meeting times are within location working hours.");
+    }
+
+    /**
+     * Returns LocalDateTime object set after another one.
+     * @param d1 The first LocalDateTime.
+     * @param d2 The second LocalDateTime.
+     * @return The LocalDateTime that is later.
+     */
+    private LocalDateTime max(LocalDateTime d1, LocalDateTime d2) {
+        if (d1 == null) return d2;
+        if (d2 == null) return d1;
+
+        return d1.isAfter(d2) ? d1 : d2;
+    }
+
+    /**
+     * Returns LocalDateTime object set before another one.
+     * @param d1 The first LocalDateTime.
+     * @param d2 The second LocalDateTime.
+     * @return The LocalDateTime that is earlier.
+     */
+    private LocalDateTime min(LocalDateTime d1, LocalDateTime d2) {
+        if (d1 == null) return d2;
+        if (d2 == null) return d1;
+
+        return d1.isBefore(d2) ? d1 : d2;
     }
 
 }
