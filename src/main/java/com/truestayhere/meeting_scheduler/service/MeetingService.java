@@ -87,8 +87,10 @@ public class MeetingService {
 
         // --- Working Hours Check ---
 
-        log.debug("Checking if meeting time is within location working hours.");
+        log.debug("Checking if meeting time is within location and attendees working hours.");
         checkMeetingWithinLocationWorkingHours(newMeeting);
+        checkMeetingWithinAttendeesWorkingHours(newMeeting);
+        log.debug("Working hours checks passed");
 
         // --- Save the Meeting ---
 
@@ -164,8 +166,10 @@ public class MeetingService {
 
         // --- Working Hours Check ---
 
-        log.debug("Checking if updated meeting time is within location working hours.");
+        log.debug("Checking if updated meeting time is within location and attendees working hours.");
         checkMeetingWithinLocationWorkingHours(existingMeeting);
+        checkMeetingWithinAttendeesWorkingHours(existingMeeting);
+        log.debug("Update working hours checks passed");
 
         // --- Save the Meeting ---
 
@@ -246,7 +250,8 @@ public class MeetingService {
 
     /**
      * Finds available time slots for a specific meeting within the working hours window on a specific day.
-     * @param id The ID of the location.
+     *
+     * @param id   The ID of the location.
      * @param date The date of the working day.
      * @return A list of AvailableSlotDTO with available time slots for the location on that date.
      */
@@ -282,42 +287,59 @@ public class MeetingService {
 
         // Fetch meetings active in the working time window
         List<Meeting> existingMeetings = meetingRepository.findByLocation_idAndStartTimeBeforeAndEndTimeAfter(id, windowEnd, windowStart);
+        log.debug("Found {} booked meetings for locationId: {}, sorted by start time.", id, existingMeetings.size());
 
-        // Sort meetings by start time
-        existingMeetings.sort(Comparator.comparing(Meeting::getStartTime));
-
-        log.debug("Found {} booked meetings, sorted by start time.", existingMeetings.size());
-
-        List<AvailableSlotDTO> availableSlots = new ArrayList<>();
-        // Set pointer at the start of working time-window
-        LocalDateTime currentPointer = windowStart;
-
-        // Calculating available time slots
-        for (Meeting meeting: existingMeetings) {
-            // Not taking into account time before or after the time-window
-            LocalDateTime meetingStart = max(meeting.getStartTime(), windowStart);
-            LocalDateTime meetingEnd = min(meeting.getEndTime(), windowEnd);
-
-            log.trace("Processing booked meeting: ID {}, Window Start: {}, Window End: {}", meeting.getId(), meetingStart, meetingEnd);
-
-            // If there is a gap between currentPointer and meeting start - add time slot
-            if (meetingStart.isAfter(currentPointer)) {
-                log.trace("Found available slot: {} to {}", currentPointer, meetingStart);
-                availableSlots.add(new AvailableSlotDTO(currentPointer, meetingStart));
-            }
-
-            // Move a pointer to the end of the meeting (or not move in case meeting overlap)
-            currentPointer = max(currentPointer, meetingEnd);
-            log.trace("Pointer moved to: {}", currentPointer);
-        }
-
-        // In case there is a time between last meeting end and working time window end
-        if (windowEnd.isAfter(currentPointer)) {
-            log.trace("Found final available slot: {} to {}", currentPointer, windowEnd);
-            availableSlots.add(new AvailableSlotDTO(currentPointer, windowEnd));
-        }
+        List<AvailableSlotDTO> availableSlots = findAvailableSlots(existingMeetings, windowStart, windowEnd);
 
         log.info("Calculated {} available time slots for locationId: {} on date: {}", availableSlots.size(), id, date);
+        return availableSlots;
+    }
+
+
+    /**
+     * Finds available time slots for a specific attendee within the working hours window on a specific day.
+     *
+     * @param id   The ID of the attendee.
+     * @param date The date of the working day.
+     * @return A list of AvailableSlotDTO with available time slots for the attendee on that date.
+     */
+    public List<AvailableSlotDTO> getAvailableTimeForAttendee(Long id, LocalDate date) {
+        log.debug("Finding available time slots for attendeeId: {} on date: {}", id, date);
+
+        // fetch the attendee
+        Attendee attendee = findAttendeeEntityById(id);
+
+        // Get working hours from location or default values
+        LocalTime startOfDay = attendee.getWorkingStartTime() != null ?
+                attendee.getWorkingStartTime() : DEFAULT_WORKING_START_TIME;
+        LocalTime endOfDay = attendee.getWorkingEndTime() != null ?
+                attendee.getWorkingEndTime() : DEFAULT_WORKING_END_TIME;
+
+        // --- Handle Time Window Logic ---
+
+        LocalDateTime windowStart;
+        LocalDateTime windowEnd;
+
+        if (endOfDay.isBefore(startOfDay)) {
+            windowStart = date.atTime(startOfDay);
+            windowEnd = date.plusDays(1).atTime(endOfDay);
+            log.debug("Overnight shift detected for attendee {}.", id);
+        } else {
+            windowStart = date.atTime(startOfDay);
+            windowEnd = date.atTime(endOfDay);
+        }
+
+        // --- End Time Window Logic Handling ---
+
+        log.debug("Working time window for attendee {}: {} to {}", id, windowStart, windowEnd);
+
+        // Fetch meetings active in the working time window
+        List<Meeting> existingMeetings = meetingRepository.findByAttendees_idAndStartTimeBeforeAndEndTimeAfter(id, windowEnd, windowStart);
+        log.debug("Found {} booked meeting for attendeeId: {}, sorted by start time.", id, existingMeetings.size());
+
+        List<AvailableSlotDTO> availableSlots = findAvailableSlots(existingMeetings, windowStart, windowEnd);
+
+        log.info("Calculated {} available time slots for attendeeId: {} on date: {}", availableSlots.size(), id, date);
         return availableSlots;
     }
 
@@ -335,6 +357,13 @@ public class MeetingService {
     private Location findLocationEntityById(Long id) {
         return locationRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + id));
+    }
+
+
+    // Accepts ID, returns Attendee Entity
+    private Attendee findAttendeeEntityById(Long id) {
+        return attendeeRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Attendee not found with id: " + id));
     }
 
 
@@ -447,6 +476,7 @@ public class MeetingService {
         log.debug("No duplicates found for the provided meeting.");
     }
 
+
     // Meeting time-window within Location's working hours Check - Accepts Meeting, throws IllegalArgumentException
     private void checkMeetingWithinLocationWorkingHours(Meeting meeting) {
         Location location = meeting.getLocation();
@@ -465,21 +495,107 @@ public class MeetingService {
 
         if (meetingStartTimeOfDay.isBefore(locationStart)) {
             String errorMessage = String.format("Meeting start time (%s) is before location's working start time (%s).", meetingStartTimeOfDay, locationStart);
-            log.warn("Working hours violation: {}", errorMessage);
+            log.warn("Location working hours violation: {}", errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
 
         if (meetingEndTimeOfDay.isAfter(locationEnd)) {
             String errorMessage = String.format("Meeting end time (%s) is after location's working end time (%s).", meetingEndTimeOfDay, locationEnd);
-            log.warn("Working hours violation: {}", errorMessage);
+            log.warn("Location working hours violation: {}", errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
 
         log.debug("Meeting times are within location working hours.");
     }
 
+
+    // Meeting time-window within attendees' working hours check - Accepts Meeting, throws IllegalArgumentException
+    private void checkMeetingWithinAttendeesWorkingHours(Meeting meeting) {
+        Set<Attendee> attendees = meeting.getAttendees();
+        if (attendees == null || attendees.isEmpty()) {
+            return;
+        }
+
+        LocalTime meetingStartTimeOfDay = meeting.getStartTime().toLocalTime();
+        LocalTime meetingEndTimeOfDay = meeting.getEndTime().toLocalTime();
+
+        for (Attendee attendee : attendees) {
+            LocalTime attendeeStart = attendee.getWorkingStartTime() != null ?
+                    attendee.getWorkingStartTime() : DEFAULT_WORKING_START_TIME;
+            LocalTime attendeeEnd = attendee.getWorkingEndTime() != null ?
+                    attendee.getWorkingEndTime() : DEFAULT_WORKING_END_TIME;
+
+            if (meetingStartTimeOfDay.isBefore(attendeeStart)) {
+                String errorMessage = String.format("Meeting start time (%s) is before attendee ID: %d working start time (%s).", meetingStartTimeOfDay, attendee.getId(), attendeeStart);
+                log.warn("Attendee working hours violation: {}", errorMessage);
+                throw new IllegalArgumentException(errorMessage);
+            }
+
+            if (meetingEndTimeOfDay.isAfter(attendeeEnd)) {
+                String errorMessage = String.format("Meeting end time (%s) is after attendee ID: %d working end time (%s).", meetingEndTimeOfDay, attendee.getId(), attendeeEnd);
+                log.warn("Attendee working hours violation: {}", errorMessage);
+                throw new IllegalArgumentException(errorMessage);
+            }
+        }
+        log.debug("Meeting times are within attendees working hours.");
+    }
+
+
+    /**
+     * Finds available time slots between booked meetings in a specified time window.
+     *
+     * @param meetings    The list of booked meetings.
+     * @param windowStart The start of the working time window.
+     * @param windowEnd   The end of the working time window.
+     * @return A List of AvailableSlotDTO with the available time slots for the specified time window.
+     */
+    private List<AvailableSlotDTO> findAvailableSlots(List<Meeting> meetings, LocalDateTime windowStart, LocalDateTime windowEnd) {
+        // All day is free if there are no meetings
+        if (meetings == null || meetings.isEmpty()) {
+            return List.of(new AvailableSlotDTO(windowStart, windowEnd));
+        }
+
+        // Sorting meetings by start time (in case it is not sorted)
+        meetings.sort(Comparator.comparing(Meeting::getStartTime));
+
+        List<AvailableSlotDTO> availableSlots = new ArrayList<>();
+
+        // Set pointer at the start of working time-window
+        LocalDateTime currentPointer = windowStart;
+
+        // Calculating available time slots
+        for (Meeting meeting : meetings) {
+            // Not taking into account time before or after the time-window
+            LocalDateTime meetingStart = max(meeting.getStartTime(), windowStart);
+            LocalDateTime meetingEnd = min(meeting.getEndTime(), windowEnd);
+
+            log.trace("Processing booked meeting: ID {}, Window Start: {}, Window End: {}", meeting.getId(), meetingStart, meetingEnd);
+
+            // If there is a gap between currentPointer and meeting start - add time slot
+            if (meetingStart.isAfter(currentPointer)) {
+                log.trace("Found available slot: {} to {}", currentPointer, meetingStart);
+                availableSlots.add(new AvailableSlotDTO(currentPointer, meetingStart));
+            }
+
+            // Move a pointer to the end of the meeting (or not move in case meeting overlap)
+            currentPointer = max(currentPointer, meetingEnd);
+            log.trace("Pointer moved to: {}", currentPointer);
+        }
+
+        // In case there is a time between last meeting end and working time window end
+        if (windowEnd.isAfter(currentPointer)) {
+            log.trace("Found final available slot: {} to {}", currentPointer, windowEnd);
+            availableSlots.add(new AvailableSlotDTO(currentPointer, windowEnd));
+        }
+
+        log.info("Calculated {} available time slots between {} and {}", availableSlots.size(), windowStart, windowEnd);
+        return availableSlots;
+    }
+
+
     /**
      * Returns LocalDateTime object set after another one.
+     *
      * @param d1 The first LocalDateTime.
      * @param d2 The second LocalDateTime.
      * @return The LocalDateTime that is later.
@@ -493,6 +609,7 @@ public class MeetingService {
 
     /**
      * Returns LocalDateTime object set before another one.
+     *
      * @param d1 The first LocalDateTime.
      * @param d2 The second LocalDateTime.
      * @return The LocalDateTime that is earlier.

@@ -1,14 +1,12 @@
 package com.truestayhere.meeting_scheduler.dto;
 
-// Data validation will be added later!
-
 import com.truestayhere.meeting_scheduler.dto.validation.StartBeforeEnd;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDateTime;
 import java.util.Set;
 
-// Request send from client to create a new meeting
+// Request sends it from client to create a new meeting
 @StartBeforeEnd
 public record CreateMeetingRequestDTO(
         @NotBlank(message = "Meeting title must not be blank.")
