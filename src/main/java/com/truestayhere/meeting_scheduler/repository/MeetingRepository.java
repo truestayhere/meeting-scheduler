@@ -27,7 +27,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     // SELECT m.id, m.title, m.startTime, m.endTime, m.location_id FROM meeting m WHERE m.startTime < ? AND m.endTime > ? ORDER BY m.startTime;
     List<Meeting> findByStartTimeBeforeAndEndTimeAfter(LocalDateTime rangeEnd, LocalDateTime rangeStart);
 
-    // Find meeting in a specific location that overlap a specific timeframe
+    // Find a meeting in a specific location that overlap a specific timeframe
     // Example SQL Query:
     // SELECT m.id, m.title, m.startTime, m.endTime, m.location_id FROM meeting m WHERE location_id = ? AND m.startTime < ? AND m.endTime > ? ORDER BY m.startTime;
     List<Meeting> findByLocation_idAndStartTimeBeforeAndEndTimeAfter(Long locationId, LocalDateTime rangeEnd, LocalDateTime rangeStart);
@@ -48,7 +48,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     // SELECT m.id, m.title, m.startTime, m.endTime, m.location_id FROM meeting m INNER JOIN meeting_attendee ma ON m.id = ma.meeting_id WHERE ma.attendee_id = ? AND m.startTime < ? AND m.endTime > ? ORDER BY m.startTime;
     List<Meeting> findByAttendees_idAndStartTimeBeforeAndEndTimeAfter(Long attendeeId, LocalDateTime rangeEnd, LocalDateTime rangeStart);
 
-    // Find meeting in specific location that starts and ends at specific time
+    // Find a meeting in specific location that starts and ends at specific time
     // Example SQL Query:
     // SELECT m.id, m.title, m.startTime, m.endTime, m.location_id FROM meeting m WHERE m.location_id = ? AND m.startTime = ? AND m.endTime = ? ORDER BY m.startTime;
     List<Meeting> findByLocation_idAndStartTimeAndEndTime(Long location_id, LocalDateTime startTime, LocalDateTime endTime);

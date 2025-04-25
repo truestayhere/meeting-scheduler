@@ -2,6 +2,7 @@ package com.truestayhere.meeting_scheduler.service;
 
 import com.truestayhere.meeting_scheduler.dto.*;
 import com.truestayhere.meeting_scheduler.exception.MeetingConflictException;
+import com.truestayhere.meeting_scheduler.mapper.LocationMapper;
 import com.truestayhere.meeting_scheduler.mapper.MeetingMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.model.Location;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -31,12 +33,16 @@ public class MeetingService {
     private final LocationRepository locationRepository;
     private final AttendeeRepository attendeeRepository;
     private final MeetingMapper meetingMapper;
+    private final LocationMapper locationMapper;
 
     private static final Logger log = LoggerFactory.getLogger(MeetingService.class);
 
     // Default working hours
     private static final LocalTime DEFAULT_WORKING_START_TIME = LocalTime.of(9, 0);
     private static final LocalTime DEFAULT_WORKING_END_TIME = LocalTime.of(17, 0);
+
+    private record TimeWindow(LocalDateTime start, LocalDateTime end) {
+    }
 
 
     // === CRUD METHODS ===
@@ -74,9 +80,20 @@ public class MeetingService {
         Set<Attendee> attendees = findAttendeesById(requestDTO.attendeeIds());
         log.debug("Fetched {} attendee entities", attendees.size());
 
-        // --- Creating Meeting ---
+        // --- Working Hours Check ---
 
-        log.debug("Attempting to save new meeting");
+        log.debug("Checking if meeting time is within location and attendees working hours.");
+        checkMeetingWithinLocationWorkingHours(location, requestDTO.startTime(), requestDTO.endTime());
+        checkMeetingWithinAttendeesWorkingHours(attendees, requestDTO.startTime(), requestDTO.endTime());
+        log.debug("Working hours checks passed");
+
+        // --- Capacity Check ---
+
+        log.debug("Checking if meeting location capacity is enough for the number of attendees.");
+        checkLocationCapacity(location, attendees.size());
+        log.debug("Capacity check passed");
+
+        // --- Creating Meeting ---
 
         Meeting newMeeting = new Meeting();
         newMeeting.setTitle(requestDTO.title());
@@ -85,14 +102,9 @@ public class MeetingService {
         newMeeting.setLocation(location);
         newMeeting.setAttendees(attendees);
 
-        // --- Working Hours Check ---
-
-        log.debug("Checking if meeting time is within location and attendees working hours.");
-        checkMeetingWithinLocationWorkingHours(newMeeting);
-        checkMeetingWithinAttendeesWorkingHours(newMeeting);
-        log.debug("Working hours checks passed");
-
         // --- Save the Meeting ---
+
+        log.debug("Attempting to save new meeting");
 
         Meeting savedMeeting = meetingRepository.save(newMeeting);
 
@@ -156,6 +168,19 @@ public class MeetingService {
         Set<Attendee> attendees = findAttendeesById(requestDTO.attendeeIds());
         log.debug("Fetched {} attendee entities", attendees.size());
 
+        // --- Working Hours Check ---
+
+        log.debug("Checking if updated meeting time is within location and attendees working hours.");
+        checkMeetingWithinLocationWorkingHours(location, requestDTO.startTime(), requestDTO.endTime());
+        checkMeetingWithinAttendeesWorkingHours(attendees, requestDTO.startTime(), requestDTO.endTime());
+        log.debug("Update working hours checks passed");
+
+        // --- Capacity Check ---
+
+        log.debug("Checking if updated meeting location capacity is enough for the number of attendees.");
+        checkLocationCapacity(location, attendees.size());
+        log.debug("Update capacity check passed");
+
         // --- Creating Meeting ---
 
         existingMeeting.setTitle(requestDTO.title());
@@ -163,13 +188,6 @@ public class MeetingService {
         existingMeeting.setEndTime(requestDTO.endTime());
         existingMeeting.setLocation(location);
         existingMeeting.setAttendees(attendees);
-
-        // --- Working Hours Check ---
-
-        log.debug("Checking if updated meeting time is within location and attendees working hours.");
-        checkMeetingWithinLocationWorkingHours(existingMeeting);
-        checkMeetingWithinAttendeesWorkingHours(existingMeeting);
-        log.debug("Update working hours checks passed");
 
         // --- Save the Meeting ---
 
@@ -261,35 +279,18 @@ public class MeetingService {
         // fetch the location
         Location location = findLocationEntityById(id);
 
-        // Get working hours from location or default values
-        LocalTime startOfDay = location.getWorkingStartTime() != null ?
-                location.getWorkingStartTime() : DEFAULT_WORKING_START_TIME;
-        LocalTime endOfDay = location.getWorkingEndTime() != null ?
-                location.getWorkingEndTime() : DEFAULT_WORKING_END_TIME;
-
         // --- Handle Time Window Logic ---
 
-        LocalDateTime windowStart;
-        LocalDateTime windowEnd;
-
-        if (endOfDay.isBefore(startOfDay)) {
-            windowStart = date.atTime(startOfDay);
-            windowEnd = date.plusDays(1).atTime(endOfDay);
-            log.debug("Overnight shift detected for location {}.", id);
-        } else {
-            windowStart = date.atTime(startOfDay);
-            windowEnd = date.atTime(endOfDay);
-        }
+        TimeWindow workingDayWindow = getWorkingDayWindow(location.getWorkingStartTime(), location.getWorkingEndTime(), date);
+        log.debug("Working time window for location {}: {} to {}", id, workingDayWindow.start(), workingDayWindow.end());
 
         // --- End Time Window Logic Handling ---
 
-        log.debug("Working time window for location {}: {} to {}", id, windowStart, windowEnd);
-
         // Fetch meetings active in the working time window
-        List<Meeting> existingMeetings = meetingRepository.findByLocation_idAndStartTimeBeforeAndEndTimeAfter(id, windowEnd, windowStart);
-        log.debug("Found {} booked meetings for locationId: {}, sorted by start time.", id, existingMeetings.size());
+        List<Meeting> existingMeetings = meetingRepository.findByLocation_idAndStartTimeBeforeAndEndTimeAfter(id, workingDayWindow.end(), workingDayWindow.start());
+        log.debug("Found {} booked meetings for locationId: {}, sorted by start time.", existingMeetings.size(), id);
 
-        List<AvailableSlotDTO> availableSlots = findAvailableSlots(existingMeetings, windowStart, windowEnd);
+        List<AvailableSlotDTO> availableSlots = findAvailableSlots(existingMeetings, workingDayWindow.start(), workingDayWindow.end());
 
         log.info("Calculated {} available time slots for locationId: {} on date: {}", availableSlots.size(), id, date);
         return availableSlots;
@@ -309,42 +310,74 @@ public class MeetingService {
         // fetch the attendee
         Attendee attendee = findAttendeeEntityById(id);
 
-        // Get working hours from location or default values
-        LocalTime startOfDay = attendee.getWorkingStartTime() != null ?
-                attendee.getWorkingStartTime() : DEFAULT_WORKING_START_TIME;
-        LocalTime endOfDay = attendee.getWorkingEndTime() != null ?
-                attendee.getWorkingEndTime() : DEFAULT_WORKING_END_TIME;
-
         // --- Handle Time Window Logic ---
 
-        LocalDateTime windowStart;
-        LocalDateTime windowEnd;
-
-        if (endOfDay.isBefore(startOfDay)) {
-            windowStart = date.atTime(startOfDay);
-            windowEnd = date.plusDays(1).atTime(endOfDay);
-            log.debug("Overnight shift detected for attendee {}.", id);
-        } else {
-            windowStart = date.atTime(startOfDay);
-            windowEnd = date.atTime(endOfDay);
-        }
+        TimeWindow workingDayWindow = getWorkingDayWindow(attendee.getWorkingStartTime(), attendee.getWorkingEndTime(), date);
+        log.debug("Working time window for attendeeId {}: {} to {}", id, workingDayWindow.start(), workingDayWindow.end());
 
         // --- End Time Window Logic Handling ---
 
-        log.debug("Working time window for attendee {}: {} to {}", id, windowStart, windowEnd);
-
         // Fetch meetings active in the working time window
-        List<Meeting> existingMeetings = meetingRepository.findByAttendees_idAndStartTimeBeforeAndEndTimeAfter(id, windowEnd, windowStart);
-        log.debug("Found {} booked meeting for attendeeId: {}, sorted by start time.", id, existingMeetings.size());
+        List<Meeting> existingMeetings = meetingRepository.findByAttendees_idAndStartTimeBeforeAndEndTimeAfter(id, workingDayWindow.end(), workingDayWindow.start());
+        log.debug("Found {} booked meeting for attendeeId: {}, sorted by start time.", existingMeetings.size(), id);
 
-        List<AvailableSlotDTO> availableSlots = findAvailableSlots(existingMeetings, windowStart, windowEnd);
+        List<AvailableSlotDTO> availableSlots = findAvailableSlots(existingMeetings, workingDayWindow.start(), workingDayWindow.end());
 
         log.info("Calculated {} available time slots for attendeeId: {} on date: {}", availableSlots.size(), id, date);
         return availableSlots;
     }
 
 
+    /**
+     * Finds suitable meeting time slots and locations based on attendee availability and required duration.
+     * Refactored for better efficiency (Location-First Intersection).
+     *
+     * @param request DTO containing attendee IDs, desired duration, and date.
+     * @return A list of potential meeting suggestions.
+     */
+    public List<MeetingSuggestionDTO> findMeetingSuggestions(MeetingSuggestionRequestDTO request) {
+        log.info("Finding meeting suggestions for attendeeIds: {}, date: {}, duration: {} mins",
+                request.attendeeIds(), request.date(), request.durationMinutes());
+
+        // Fetch attendees by ID
+        Set<Attendee> attendees = findAttendeesById(request.attendeeIds());
+        if (attendees.isEmpty()) {
+            log.warn("No attendees found for suggestion request.");
+            return List.of();
+        }
+
+        // Calculate common availability slots for attendees
+        List<AvailableSlotDTO> commonSlots = calculateAttendeeCommonAvailability(attendees, request.date());
+        if (commonSlots.isEmpty()) {
+            log.info("No common available time slots found for the specified attendees on {}", request.date());
+            return List.of();
+        }
+        log.debug("Found {} common slots before duration filter.", commonSlots.size());
+
+        // Filter common slots by duration
+        List<AvailableSlotDTO> sufficientDurationGaps = filterSlotsByDuration(commonSlots, request.durationMinutes());
+        if (sufficientDurationGaps.isEmpty()) {
+            log.info("No common available time slots found with sufficient duration ({} mins).", request.durationMinutes());
+            return List.of();
+        }
+        log.debug("Found {} common slots after duration filter.", sufficientDurationGaps.size());
+
+        // Find locations that match capacity
+        List<Location> suitableLocations = findLocationsByCapacityMin(attendees.size());
+        log.debug("Found {} locations with capacity >= {}.", suitableLocations.size(), attendees.size());
+
+        // Filter locations availability time slots for matching requirements
+        List<MeetingSuggestionDTO> suggestions = generateSuggestions(sufficientDurationGaps, suitableLocations, request.durationMinutes(), request.date());
+        log.info("Generated {} meeting suggestions.", suggestions.size());
+
+        return suggestions;
+    }
+
+
     // === HELPER METHODS ===
+
+
+    // -- Fetch Methods ---
 
 
     // Accepts ID, returns Meeting Entity
@@ -357,6 +390,16 @@ public class MeetingService {
     private Location findLocationEntityById(Long id) {
         return locationRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + id));
+    }
+
+
+    // Accepts int, returns List<Location>
+    private List<Location> findLocationsByCapacityMin(int minCapacity) {
+        List<Location> locations = locationRepository.findByCapacityGreaterThanEqual(minCapacity);
+        if (locations.isEmpty()) {
+            throw new EntityNotFoundException("Locations not found with capacity equal or greater than: " + minCapacity);
+        }
+        return locations;
     }
 
 
@@ -381,6 +424,11 @@ public class MeetingService {
         return attendees;
     }
 
+
+    // -- End of Fetch Methods ---
+
+
+    // -- Validation Methods ---
 
     // Location Conflict Check (meeting overlap) - Accepts ID, LocalDateTime, throws MeetingConflictException
     private void checkLocationConflict(Long locationId, LocalDateTime startTime, LocalDateTime endTime, Long meetingIdToExclude) {
@@ -477,30 +525,22 @@ public class MeetingService {
     }
 
 
-    // Meeting time-window within Location's working hours Check - Accepts Meeting, throws IllegalArgumentException
-    private void checkMeetingWithinLocationWorkingHours(Meeting meeting) {
-        Location location = meeting.getLocation();
-
+    // Meeting time-window within Location's working hours Check - Accepts Location, LocalDateTime, trows IllegalArgumentException
+    private void checkMeetingWithinLocationWorkingHours(Location location, LocalDateTime startTime, LocalDateTime endTime) {
         if (location == null) {
             return;
         }
 
-        LocalTime locationStart = location.getWorkingStartTime() != null ?
-                location.getWorkingStartTime() : DEFAULT_WORKING_START_TIME;
-        LocalTime locationEnd = location.getWorkingEndTime() != null ?
-                location.getWorkingEndTime() : DEFAULT_WORKING_END_TIME;
+        TimeWindow locationTimeWindow = getWorkingDayWindow(location.getWorkingStartTime(), location.getWorkingEndTime(), startTime.toLocalDate());
 
-        LocalTime meetingStartTimeOfDay = meeting.getStartTime().toLocalTime();
-        LocalTime meetingEndTimeOfDay = meeting.getEndTime().toLocalTime();
-
-        if (meetingStartTimeOfDay.isBefore(locationStart)) {
-            String errorMessage = String.format("Meeting start time (%s) is before location's working start time (%s).", meetingStartTimeOfDay, locationStart);
+        if (startTime.isBefore(locationTimeWindow.start())) {
+            String errorMessage = String.format("Meeting start time (%s) is before location's working start time (%s).", startTime, locationTimeWindow.start());
             log.warn("Location working hours violation: {}", errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
 
-        if (meetingEndTimeOfDay.isAfter(locationEnd)) {
-            String errorMessage = String.format("Meeting end time (%s) is after location's working end time (%s).", meetingEndTimeOfDay, locationEnd);
+        if (endTime.isAfter(locationTimeWindow.end())) {
+            String errorMessage = String.format("Meeting end time (%s) is after location's working end time (%s).", endTime, locationTimeWindow.end());
             log.warn("Location working hours violation: {}", errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
@@ -509,30 +549,23 @@ public class MeetingService {
     }
 
 
-    // Meeting time-window within attendees' working hours check - Accepts Meeting, throws IllegalArgumentException
-    private void checkMeetingWithinAttendeesWorkingHours(Meeting meeting) {
-        Set<Attendee> attendees = meeting.getAttendees();
+    // Meeting time-window within attendees' working hours check - Accepts Attendee, LocalDateTime, throws IllegalArgumentException
+    private void checkMeetingWithinAttendeesWorkingHours(Set<Attendee> attendees, LocalDateTime startTime, LocalDateTime endTime) {
         if (attendees == null || attendees.isEmpty()) {
             return;
         }
 
-        LocalTime meetingStartTimeOfDay = meeting.getStartTime().toLocalTime();
-        LocalTime meetingEndTimeOfDay = meeting.getEndTime().toLocalTime();
-
         for (Attendee attendee : attendees) {
-            LocalTime attendeeStart = attendee.getWorkingStartTime() != null ?
-                    attendee.getWorkingStartTime() : DEFAULT_WORKING_START_TIME;
-            LocalTime attendeeEnd = attendee.getWorkingEndTime() != null ?
-                    attendee.getWorkingEndTime() : DEFAULT_WORKING_END_TIME;
+            TimeWindow locationTimeWindow = getWorkingDayWindow(attendee.getWorkingStartTime(), attendee.getWorkingEndTime(), startTime.toLocalDate());
 
-            if (meetingStartTimeOfDay.isBefore(attendeeStart)) {
-                String errorMessage = String.format("Meeting start time (%s) is before attendee ID: %d working start time (%s).", meetingStartTimeOfDay, attendee.getId(), attendeeStart);
+            if (startTime.isBefore(locationTimeWindow.start())) {
+                String errorMessage = String.format("Meeting start time (%s) is before attendee ID: %d working start time (%s).", startTime, attendee.getId(), locationTimeWindow.start());
                 log.warn("Attendee working hours violation: {}", errorMessage);
                 throw new IllegalArgumentException(errorMessage);
             }
 
-            if (meetingEndTimeOfDay.isAfter(attendeeEnd)) {
-                String errorMessage = String.format("Meeting end time (%s) is after attendee ID: %d working end time (%s).", meetingEndTimeOfDay, attendee.getId(), attendeeEnd);
+            if (endTime.isAfter(locationTimeWindow.end())) {
+                String errorMessage = String.format("Meeting end time (%s) is after attendee ID: %d working end time (%s).", endTime, attendee.getId(), locationTimeWindow.end());
                 log.warn("Attendee working hours violation: {}", errorMessage);
                 throw new IllegalArgumentException(errorMessage);
             }
@@ -540,6 +573,30 @@ public class MeetingService {
         log.debug("Meeting times are within attendees working hours.");
     }
 
+
+    // Meeting location's capacity check - Accepts Location, Integer, throws IllegalArgumentException
+    private void checkLocationCapacity(Location location, Integer requiredCapacity) {
+        if (requiredCapacity == null) {
+            return;
+        }
+
+        Integer locationCapacity = location.getCapacity();
+
+        if (locationCapacity < requiredCapacity) {
+            String errorMessage = String.format("Meeting cannot be created. Location '%s' (ID: %d) has a capacity of %d, but %d attendees were invited.",
+                    location.getName(),
+                    location.getId(),
+                    locationCapacity,
+                    requiredCapacity);
+            log.warn("Capacity check failed: {}", errorMessage);
+            throw new IllegalArgumentException(errorMessage);
+        }
+        log.debug("Meeting attendees' count fits location's capacity.");
+    }
+
+    // -- End of Validation Methods ---
+
+    // --- Availability Methods ---
 
     /**
      * Finds available time slots between booked meetings in a specified time window.
@@ -566,8 +623,8 @@ public class MeetingService {
         // Calculating available time slots
         for (Meeting meeting : meetings) {
             // Not taking into account time before or after the time-window
-            LocalDateTime meetingStart = max(meeting.getStartTime(), windowStart);
-            LocalDateTime meetingEnd = min(meeting.getEndTime(), windowEnd);
+            LocalDateTime meetingStart = maxTime(meeting.getStartTime(), windowStart);
+            LocalDateTime meetingEnd = minTime(meeting.getEndTime(), windowEnd);
 
             log.trace("Processing booked meeting: ID {}, Window Start: {}, Window End: {}", meeting.getId(), meetingStart, meetingEnd);
 
@@ -578,7 +635,7 @@ public class MeetingService {
             }
 
             // Move a pointer to the end of the meeting (or not move in case meeting overlap)
-            currentPointer = max(currentPointer, meetingEnd);
+            currentPointer = maxTime(currentPointer, meetingEnd);
             log.trace("Pointer moved to: {}", currentPointer);
         }
 
@@ -594,13 +651,319 @@ public class MeetingService {
 
 
     /**
+     * Calculates the time slots where ALL provided attendees are available on a given date.
+     *
+     * @param attendees The list of the attendees.
+     * @param date      The date to calculate time slots.
+     * @return A list of AvailableSlotDTOs with common available time slots for the provided attendees.
+     */
+    private List<AvailableSlotDTO> calculateAttendeeCommonAvailability(
+            Set<Attendee> attendees, LocalDate date) {
+
+        // If there are no attendees provided stop calculation
+        if (attendees.isEmpty()) {
+            log.warn("Attendee set is null or empty for common availability calculation.");
+            return Collections.emptyList();
+        }
+
+        // Initialize iterator
+        Iterator<Attendee> iterator = attendees.iterator();
+        Attendee firstAttendee = iterator.next();
+
+        // Assign the initial availability to the first attendee's available time slots
+        List<AvailableSlotDTO> commonAvailability = getAvailableTimeForAttendee(firstAttendee.getId(), date);
+        log.debug("Initial availability for attendee {}: {}", firstAttendee.getId(), commonAvailability.size());
+
+        // Iterate through the attendee list
+        while (iterator.hasNext()) {
+            // If common availability became empty stop calculation
+            if (commonAvailability.isEmpty()) {
+                log.debug("Common availability became empty, stopping intersection early.");
+                break;
+            }
+
+            // Get attendee availability
+            Attendee currentAttendee = iterator.next();
+            List<AvailableSlotDTO> attendeeAvailability = getAvailableTimeForAttendee(currentAttendee.getId(), date);
+            log.debug("Availability for attendee {}: {}", currentAttendee.getId(), attendeeAvailability.size());
+
+            // Intersect availability time slots with common time slots
+            commonAvailability = intersectAvailability(commonAvailability, attendeeAvailability);
+            log.debug("Common availability after intersecting with attendee {}: {}", currentAttendee.getId(), commonAvailability.size());
+        }
+
+        // Return a common available slots list
+        log.info("Final common availability slots count: {}", commonAvailability.size());
+        return commonAvailability;
+    }
+
+
+    // Finds intersecting time slots between two AvailableSlotDTO lists, Accepts List<AvailableSlotDTO>, returns List<AvailableSlotDTO> intersected slot list.
+    private List<AvailableSlotDTO> intersectAvailability(List<AvailableSlotDTO> list1, List<AvailableSlotDTO> list2) {
+        log.debug("Intersecting availability lists. List1 size: {}, List2 size: {}", list1.size(), list2.size());
+        if (list1.isEmpty() || list2.isEmpty()) {
+            log.debug("One or both lists are empty, returning empty intersection.");
+            return Collections.emptyList();
+        }
+
+        List<AvailableSlotDTO> intersection = new ArrayList<>();
+        int i = 0, j = 0;
+
+        while (i < list1.size() && j < list2.size()) {
+            AvailableSlotDTO slot1 = list1.get(i);
+            AvailableSlotDTO slot2 = list2.get(j);
+            log.trace("Comparing Slot1[{}]: {} - {} with Slot2[{}]: {} - {}", i, slot1.startTime(), slot1.endTime(), j, slot2.startTime(), slot2.endTime());
+
+            LocalDateTime overlapStart = maxTime(slot1.startTime(), slot2.startTime());
+            LocalDateTime overlapEnd = minTime(slot1.endTime(), slot2.endTime());
+            log.trace("... Calculated potential overlap: {} - {}", overlapStart, overlapEnd);
+
+            if (overlapStart.isBefore(overlapEnd)) {
+                log.trace("... Valid overlap found: {} - {}. Adding to intersection.", overlapStart, overlapEnd);
+                intersection.add(new AvailableSlotDTO(overlapStart, overlapEnd));
+            } else {
+                log.trace("... No valid overlap (start not before end).");
+            }
+
+            if (slot1.endTime().isBefore(slot2.endTime())) {
+                log.trace("... Advancing pointer i (Slot1 ends earlier). Old i={}, New i={}", i, i + 1);
+                i++;
+            } else if (slot2.endTime().isBefore(slot1.endTime())) {
+                log.trace("... Advancing pointer j (Slot2 ends earlier). Old j={}, New j={}", j, j + 1);
+                j++;
+            } else {
+                log.trace("... Both slots end simultaneously. Advancing pointers i and j. Old i={}, j={}, New i={}, j={}", i, j, i + 1, j + 1);
+                i++;
+                j++;
+            }
+        }
+        log.debug("Raw intersection found {} slots before merging.", intersection.size());
+
+        List<AvailableSlotDTO> mergedIntersection = mergeOverlappingSlots(intersection);
+        log.debug("Intersection complete. Returning {} merged slots.", mergedIntersection.size());
+
+        return mergedIntersection;
+    }
+
+
+    // Merges overlapping time slots in a list, accepts List<AvailableSlotDTO>, returns List<AvailableSlotDTO> merged slots list.
+    private List<AvailableSlotDTO> mergeOverlappingSlots(List<AvailableSlotDTO> slots) {
+        log.debug("Merging {} input slots.", slots.size());
+        if (slots.size() <= 1) {
+            log.debug("List has 0 or 1 slot, no merging needed.");
+            return slots == null ? Collections.emptyList() : slots;
+        }
+
+        slots.sort(Comparator.comparing(AvailableSlotDTO::startTime));
+        log.trace("Slots sorted by start time.");
+
+        LinkedList<AvailableSlotDTO> merged = new LinkedList<>();
+        merged.add(slots.get(0));
+        log.trace("Initialized merged list with first slot: {} - {}", slots.get(0).startTime(), slots.get(0).endTime());
+
+        for (int i = 1; i < slots.size(); i++) {
+            AvailableSlotDTO current = slots.get(i);
+            AvailableSlotDTO lastMerged = merged.getLast();
+
+            log.trace("Processing slot {}: {} - {}. Comparing with last merged: {} - {}", i, current.startTime(), current.endTime(), lastMerged.startTime(), lastMerged.endTime());
+
+            if (!current.startTime().isAfter(lastMerged.endTime())) {
+                log.trace("... Overlap/adjacency detected.");
+
+                LocalDateTime newEndTime = maxTime(lastMerged.endTime(), current.endTime());
+
+                if (newEndTime.isAfter(lastMerged.endTime())) {
+                    log.trace("... Merging. Updating last merged end time from {} to {}", lastMerged.endTime(), newEndTime);
+                    merged.set(merged.size() - 1, new AvailableSlotDTO(lastMerged.startTime(), newEndTime));
+                } else {
+                    log.trace("... Current slot is fully contained within last merged, no change needed.");
+                }
+            } else {
+                log.trace("... No overlap. Adding current slot as a new entry.");
+                merged.add(current);
+            }
+        }
+
+        log.debug("Merging complete. Resulting list size: {}", merged.size());
+        return merged;
+    }
+
+
+    // Returns List<AvailableSlotDTO> filtered by duration equal or greater to provided duration
+    private List<AvailableSlotDTO> filterSlotsByDuration(List<AvailableSlotDTO> slots, int durationMinutes) {
+        return slots.stream()
+                .filter(slot -> Duration.between(slot.startTime(), slot.endTime()).toMinutes() >= durationMinutes)
+                .collect(Collectors.toList());
+    }
+
+
+    /**
+     * Generate potential meeting time windows for a specific date based on available time gaps, location and meeting duration.
+     *
+     * @param gaps            List of attendees' available time gaps.
+     * @param locations       List of suitable locations.
+     * @param durationMinutes The meeting minimal duration.
+     * @param date            The date of the meeting.
+     * @return List of MeetingSuggestionDTO with an effective time window start, end and available location.
+     */
+    private List<MeetingSuggestionDTO> generateSuggestions(
+            List<AvailableSlotDTO> gaps, List<Location> locations, int durationMinutes, LocalDate date) {
+        List<MeetingSuggestionDTO> suggestions = new ArrayList<>();
+        Duration duration = Duration.ofMinutes(durationMinutes);
+        log.debug("Generating suggestions. Common Gaps: {}, Suitable Locations: {}", gaps.size(), locations.size());
+
+        for (Location location : locations) {
+            log.debug("Processing location: {} (ID: {})", location.getName(), location.getId());
+
+            // Get available slots for location
+            List<AvailableSlotDTO> locationAvailability = getAvailableTimeForLocation(location.getId(), date);
+            log.trace("... Location {} has {} slots", location.getName(), locationAvailability.size());
+
+            // Find intersection between available attendee slots and location's slots
+            List<AvailableSlotDTO> intersectionSlots = intersectAvailability(gaps, locationAvailability);
+            if (intersectionSlots.isEmpty()) {
+                log.debug("... No intersection found between attendee and location {} availability.", location.getName());
+                continue;
+            }
+            log.trace("... Found {} intersection slots with location {}.", intersectionSlots.size(), location.getName());
+
+            // Filter slots by duration
+            List<AvailableSlotDTO> sufficientSlots = filterSlotsByDuration(intersectionSlots, durationMinutes);
+            if (sufficientSlots.isEmpty()) {
+                log.debug("... No sufficient slots found for location {} with duration >= {} mins.", location.getName(), durationMinutes);
+                continue;
+            }
+
+            // Add suggestions to the list
+            LocationDTO locationDTO = locationMapper.mapToLocationDTO(location);
+            for (AvailableSlotDTO slot : sufficientSlots) {
+                suggestions.add(new MeetingSuggestionDTO(slot.startTime(), slot.endTime(), locationDTO));
+            }
+        }
+
+        // Filter results by start time and location name
+        suggestions.sort(Comparator.comparing(MeetingSuggestionDTO::startTime).thenComparing(s -> s.locationDTO().name()));
+
+        log.info("Generated {} meeting suggestions.", suggestions.size());
+        return suggestions;
+    }
+
+
+    /**
+     * Checks if a location has AT LEAST ONE available time block of a minimum duration
+     * that falls within the requested check window [startTime, endTime).
+     *
+     * @param locationId      The ID of the location to check.
+     * @param startTime       The start of the window to look within.
+     * @param endTime         The end of the window to look within.
+     * @param durationMinutes The minimum required duration of the free block.
+     * @return true if at least one suitable free block exists, false otherwise.
+     */
+    private boolean isLocationAvailableForSlot(Long locationId, LocalDateTime startTime, LocalDateTime endTime, int durationMinutes) {
+        // Fetch available time slots for the location
+        List<AvailableSlotDTO> locationSlots = getAvailableTimeForLocation(locationId, startTime.toLocalDate());
+
+        log.trace("Checking location ID: {} for duration {} within {} - {}. All Location Slots: {}",
+                locationId, durationMinutes, startTime, endTime, locationSlots);
+
+        for (AvailableSlotDTO locSlot : locationSlots) {
+            LocalDateTime overlapStart = maxTime(locSlot.startTime(), startTime);
+            LocalDateTime overlapEnd = minTime(locSlot.endTime(), endTime);
+
+            long overlapDuration = Duration.between(overlapStart, overlapEnd).toMinutes();
+
+            if (overlapStart.isBefore(overlapEnd)) {
+                if (overlapDuration >= durationMinutes) {
+                    log.trace("---> Found suitable overlap: {} - {} (Duration: {} mins) within Loc Slot: {}",
+                            overlapStart, overlapEnd, overlapDuration, locSlot);
+                }
+                return true;
+            } else {
+                log.trace("---> Overlap {} - {} (Duration: {} mins) is too short.",
+                        overlapStart, overlapEnd, overlapDuration);
+            }
+            log.trace("---> No suitable slot of {} mins found for loc {} within {} - {}",
+                    durationMinutes, locationId, startTime, endTime);
+        }
+
+        return false;
+    }
+
+    // --- End of Availability Methods ---
+
+
+    // --- Time Management Methods ---
+
+
+    /**
+     * Get an effective window within working hours for a meeting gap.
+     *
+     * @param generalGap The meeting gap.
+     * @param startTime  The working start time.
+     * @param endTime    The working end time.
+     * @param date       The date the working day.
+     * @return Optional<AvailableSlotDTO> with the effective window start and end time or null.
+     */
+    private Optional<AvailableSlotDTO> calculateEffectiveWindow(
+            AvailableSlotDTO generalGap, LocalTime startTime, LocalTime endTime, LocalDate date) {
+
+        TimeWindow locationWindow = getWorkingDayWindow(startTime, endTime, date);
+
+        LocalDateTime effectiveStart = maxTime(generalGap.startTime(), locationWindow.start());
+        LocalDateTime effectiveEnd = minTime(generalGap.endTime(), locationWindow.end());
+
+        if (effectiveStart.isBefore(effectiveEnd)) {
+            return Optional.of(new AvailableSlotDTO(effectiveStart, effectiveEnd));
+        } else {
+            log.trace("-- No effective window overlap between attendee gap {} and location window {}",
+                    generalGap, locationWindow);
+            return Optional.empty();
+        }
+    }
+
+
+    /**
+     * Calculate working shift time for the specified date.
+     *
+     * @param startTime The working day start time.
+     * @param endTime   The working day end time.
+     * @param date      The date to be assigned.
+     * @return TimeWindow record with LocalDateTime working shift start and end time with an assigned date.
+     */
+    private TimeWindow getWorkingDayWindow(LocalTime startTime, LocalTime endTime, LocalDate date) {
+        LocalTime workStart = startTime != null ?
+                startTime : DEFAULT_WORKING_START_TIME;
+        LocalTime workEnd = endTime != null ?
+                endTime : DEFAULT_WORKING_END_TIME;
+
+        LocalDateTime windowStart;
+        LocalDateTime windowEnd;
+
+        // Calculate night shift
+        if (workEnd.isBefore(workStart)) {
+            windowStart = date.atTime(workStart);
+            windowEnd = date.plusDays(1).atTime(workEnd);
+            log.trace("Calculated overnight working window: {} - {}",
+                    windowStart, windowEnd);
+        } else {
+            windowStart = date.atTime(workStart);
+            windowEnd = date.atTime(workEnd);
+            log.trace("Calculated same-day working window: {} - {}",
+                    windowStart, windowEnd);
+        }
+
+        return new TimeWindow(windowStart, windowEnd);
+    }
+
+
+    /**
      * Returns LocalDateTime object set after another one.
      *
      * @param d1 The first LocalDateTime.
      * @param d2 The second LocalDateTime.
      * @return The LocalDateTime that is later.
      */
-    private LocalDateTime max(LocalDateTime d1, LocalDateTime d2) {
+    private LocalDateTime maxTime(LocalDateTime d1, LocalDateTime d2) {
         if (d1 == null) return d2;
         if (d2 == null) return d1;
 
@@ -614,11 +977,12 @@ public class MeetingService {
      * @param d2 The second LocalDateTime.
      * @return The LocalDateTime that is earlier.
      */
-    private LocalDateTime min(LocalDateTime d1, LocalDateTime d2) {
+    private LocalDateTime minTime(LocalDateTime d1, LocalDateTime d2) {
         if (d1 == null) return d2;
         if (d2 == null) return d1;
 
         return d1.isBefore(d2) ? d1 : d2;
     }
 
+    // --- End of Time Management Methods ---
 }

@@ -22,6 +22,7 @@ public class Location {
     @Column(nullable = false, unique = true, length = 150)
     private String name;
 
+    @Column(nullable = false)
     private Integer capacity;
 
     @Column(name = "working_start_time")
@@ -30,7 +31,8 @@ public class Location {
     @Column(name = "working_end_time")
     private LocalTime workingEndTime;
 
-    public Location(String name) {
+    public Location(String name, int capacity) {
         this.name = name;
+        this.capacity = capacity;
     }
 }

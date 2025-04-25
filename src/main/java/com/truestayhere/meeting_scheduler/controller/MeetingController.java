@@ -1,9 +1,7 @@
 package com.truestayhere.meeting_scheduler.controller;
 
 
-import com.truestayhere.meeting_scheduler.dto.CreateMeetingRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.MeetingDTO;
-import com.truestayhere.meeting_scheduler.dto.UpdateMeetingRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.*;
 import com.truestayhere.meeting_scheduler.service.MeetingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -76,6 +74,16 @@ public class MeetingController {
         meetingService.deleteMeeting(id);
         return ResponseEntity.noContent().build(); // 204 NO CONTENT
     }
+
+
+    // POST /api/meetings/suggestions - Find meeting suggestions
+    @PostMapping("/suggestions")
+    public ResponseEntity<List<MeetingSuggestionDTO>> findMeetingSuggestions(
+            @Valid @RequestBody MeetingSuggestionRequestDTO request) {
+        List<MeetingSuggestionDTO> meetingSuggestions = meetingService.findMeetingSuggestions(request);
+        return ResponseEntity.ok(meetingSuggestions); // 200 OK
+    }
+
 
 
 }
