@@ -10,7 +10,8 @@ import java.time.LocalTime;
 @ValidWorkingHours
 public record CreateAttendeeRequestDTO(
 
-        @NotBlank(message = "Attendee name cannot be blank.") // Not null AND contains at least one non-whitespace character
+        @NotBlank(message = "Attendee name cannot be blank.")
+        // Not null AND contains at least one non-whitespace character
         @Size(max = 100, message = "Attendee name cannot exceed 100 characters.")
         String name,
 

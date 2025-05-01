@@ -7,7 +7,6 @@ import com.truestayhere.meeting_scheduler.dto.UpdateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;

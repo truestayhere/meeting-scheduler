@@ -5,14 +5,13 @@ import com.truestayhere.meeting_scheduler.dto.CreateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.UpdateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.mapper.AttendeeMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
-import com.truestayhere.meeting_scheduler.model.Location;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.transaction.annotation.Transactional;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -147,7 +146,7 @@ public class AttendeeService {
         if (duplicateAttendeeOpt.isPresent()) {
             Attendee duplicateAttendee = duplicateAttendeeOpt.get();
 
-            if (idToExclude == null || !duplicateAttendee.getId().equals(idToExclude)) {
+            if (!duplicateAttendee.getId().equals(idToExclude)) {
                 String errorMessage = (idToExclude == null)
                         ? "Attendee with email " + email + " already exists."
                         : "Another attendee (" + duplicateAttendee.getId() + ") already exists with email " + email + ".";

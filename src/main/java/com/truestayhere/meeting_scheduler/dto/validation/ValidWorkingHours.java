@@ -20,5 +20,6 @@ public @interface ValidWorkingHours {
 
     // Field names
     String startTimeField() default "workingStartTime";
+
     String endTimeField() default "workingEndTime";
 }

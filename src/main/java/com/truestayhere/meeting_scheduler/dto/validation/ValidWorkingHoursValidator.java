@@ -32,13 +32,10 @@ public class ValidWorkingHoursValidator implements ConstraintValidator<ValidWork
             return true;
         }
 
-        if (!(startTimeObj instanceof LocalTime) || !(endTimeObj instanceof LocalTime)) {
+        if (!(startTimeObj instanceof LocalTime startTime) || !(endTimeObj instanceof LocalTime endTime)) {
             log.warn("IllegalArgumentException occurred: Fields specified in @ValidWorkingHours must be of type LocalTime");
             throw new IllegalArgumentException("Fields specified in @ValidWorkingHours must be of type LocalTime");
         }
-
-        LocalTime startTime = (LocalTime) startTimeObj;
-        LocalTime endTime = (LocalTime) endTimeObj;
 
         return !startTime.equals(endTime);
 

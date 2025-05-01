@@ -5,16 +5,14 @@ import com.truestayhere.meeting_scheduler.dto.LocationDTO;
 import com.truestayhere.meeting_scheduler.dto.UpdateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.mapper.LocationMapper;
 import com.truestayhere.meeting_scheduler.model.Location;
-import com.truestayhere.meeting_scheduler.model.Meeting;
 import com.truestayhere.meeting_scheduler.repository.LocationRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -146,7 +144,7 @@ public class LocationService {
         if (duplicateLocationOpt.isPresent()) {
             Location duplicateLocation = duplicateLocationOpt.get();
 
-            if (idToExclude == null || !duplicateLocation.getId().equals(idToExclude)) {
+            if (!duplicateLocation.getId().equals(idToExclude)) {
                 String errorMessage = (idToExclude == null)
                         ? "Location with name '" + name + "' already exists."
                         : "Another location (" + duplicateLocation.getId() + ") already exists with name '" + name + "'.";

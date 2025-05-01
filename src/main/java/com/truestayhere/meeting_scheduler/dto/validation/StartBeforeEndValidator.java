@@ -25,14 +25,12 @@ public class StartBeforeEndValidator implements ConstraintValidator<StartBeforeE
                 return false;
             }
 
-            if (!(startTimeObj instanceof LocalDateTime) || !(endTimeObj instanceof LocalDateTime)) {
+            if (!(startTimeObj instanceof LocalDateTime startTime) || !(endTimeObj instanceof LocalDateTime endTime)) {
                 log.error("startTime or endTime fields are not of type LocalDateTime for object: {}", value);
                 return false;
             }
 
             // get values of start time and end time
-            LocalDateTime startTime = (LocalDateTime) startTimeObj;
-            LocalDateTime endTime = (LocalDateTime) endTimeObj;
 
             // validation logic
             return startTime.isBefore(endTime);

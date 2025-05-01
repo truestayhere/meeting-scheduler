@@ -1,7 +1,9 @@
 package com.truestayhere.meeting_scheduler.mapper;
 
 
-import com.truestayhere.meeting_scheduler.dto.*;
+import com.truestayhere.meeting_scheduler.dto.AttendeeDTO;
+import com.truestayhere.meeting_scheduler.dto.LocationDTO;
+import com.truestayhere.meeting_scheduler.dto.MeetingDTO;
 import com.truestayhere.meeting_scheduler.model.Meeting;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

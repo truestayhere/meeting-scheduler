@@ -1,10 +1,7 @@
 package com.truestayhere.meeting_scheduler.controller;
 
 
-import com.truestayhere.meeting_scheduler.dto.AttendeeDTO;
-import com.truestayhere.meeting_scheduler.dto.AvailableSlotDTO;
-import com.truestayhere.meeting_scheduler.dto.CreateAttendeeRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.UpdateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.*;
 import com.truestayhere.meeting_scheduler.service.AttendeeService;
 import com.truestayhere.meeting_scheduler.service.MeetingService;
 import jakarta.validation.Valid;
@@ -62,12 +59,21 @@ public class AttendeeController {
         return ResponseEntity.noContent().build(); // Returns 204 NO CONTENT status code with no response body
     }
 
-    // GET /api/attendees/id/availability?date=YYYY-MM-DD
+    // GET /api/attendees/id/availability?date=YYYY-MM-DD - Get available time slots for attendee
     @GetMapping("/{id}/availability")
-    public ResponseEntity<List<AvailableSlotDTO>> getLocationAvailability(
+    public ResponseEntity<List<AvailableSlotDTO>> getAttendeeAvailability(
             @PathVariable Long id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         List<AvailableSlotDTO> availableSlots = meetingService.getAvailableTimeForAttendee(id, date);
         return ResponseEntity.ok(availableSlots);
+    }
+
+
+    // POST /api/attendees/common-availability - Get common available time slots for attendees
+    @PostMapping("/common-availability")
+    public ResponseEntity<List<AvailableSlotDTO>> findCommonAttendeeAvailability(
+            @Valid @RequestBody CommonAvailabilityRequestDTO request) {
+        List<AvailableSlotDTO> commonSlots = meetingService.getCommonAttendeeAvailability(request);
+        return ResponseEntity.ok(commonSlots); // 200 OK
     }
 }
