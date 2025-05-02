@@ -26,7 +26,7 @@ public class MeetingController {
         return ResponseEntity.ok(meetings); // 200 OK
     }
 
-    // GET /api/meetings/id - Get meeting by ID
+    // GET /api/meetings/id - Get a meeting by ID
     @GetMapping("/{id}")
     public ResponseEntity<MeetingDTO> getMeetingById(@PathVariable Long id) {
         MeetingDTO meeting = meetingService.getMeetingById(id);
@@ -78,9 +78,9 @@ public class MeetingController {
 
     // POST /api/meetings/suggestions - Find meeting suggestions
     @PostMapping("/suggestions")
-    public ResponseEntity<List<MeetingSuggestionDTO>> findMeetingSuggestions(
+    public ResponseEntity<List<LocationTimeSlotDTO>> findMeetingSuggestions(
             @Valid @RequestBody MeetingSuggestionRequestDTO request) {
-        List<MeetingSuggestionDTO> meetingSuggestions = meetingService.findMeetingSuggestions(request);
+        List<LocationTimeSlotDTO> meetingSuggestions = meetingService.findMeetingSuggestions(request);
         return ResponseEntity.ok(meetingSuggestions); // 200 OK
     }
 

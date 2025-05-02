@@ -283,6 +283,62 @@ public class MeetingService {
         return availableSlots;
     }
 
+
+    /**
+     * Finds available time slots for all locations on a given date that meet a minimum duration requirement.
+     *
+     * @param request DTO containing date and minimum duration.
+     * @return List of LocationTimeSlotDTO pairing locations with their qualifying available slots.
+     */
+    public List<LocationTimeSlotDTO> getAvailabilityForLocationsByDuration(
+            LocationAvailabilityRequestDTO request) {
+        LocalDate date = request.date();
+        int durationMinutes = request.durationMinutes();
+        Integer minCapacity = request.minimumCapacity();
+
+        log.debug("Calculating location availability for date: {}, duration >= {}, minCapacity >= {}", date, durationMinutes, (minCapacity != null ? minCapacity : "N/A"));
+
+        // Fetch suitable locations
+        List<Location> suitableLocations;
+        if (minCapacity != null) {
+            suitableLocations = findLocationsByCapacityMin(minCapacity);
+            log.debug("Found {} locations matching capacity >= {}", suitableLocations.size(), minCapacity);
+        } else {
+            suitableLocations = locationRepository.findAll();
+            log.debug("No capacity filter applied, considering all {} locations.", suitableLocations.size());
+        }
+        if (suitableLocations.isEmpty()) {
+            log.info("No locations found matching the capacity criteria.");
+            return List.of();
+        }
+
+        List<LocationTimeSlotDTO> resultSlots = new ArrayList<>();
+
+        // Iterate through the locations matching the capacity criteria
+        for (Location location : suitableLocations) {
+            // Get available time resultSlots for a location
+            List<AvailableSlotDTO> locationAvailability = getAvailableTimeForLocation(location.getId(), date);
+
+            // Filter resultSlots by minimum duration
+            List<AvailableSlotDTO> sufficientSlots = filterSlotsByDuration(locationAvailability, durationMinutes);
+
+            if (!sufficientSlots.isEmpty()) {
+                LocationDTO locationDTO = locationMapper.mapToLocationDTO(location);
+
+                // Add available slot DTOs to the list
+                for (AvailableSlotDTO slot : sufficientSlots) {
+                    resultSlots.add(new LocationTimeSlotDTO(locationDTO, slot));
+                    log.trace("Found suitable slot for location '{}' (ID: {}): {} - {}",
+                            location.getName(), location.getId(), slot.startTime(), slot.endTime());
+                }
+            }
+        }
+
+        log.info("Found {} location time slots matching the criteria (date: {}, duration >= {} mins)", resultSlots.size(), date, durationMinutes);
+        return resultSlots;
+    }
+
+
     /**
      * Finds available time slots for a specific attendee within the working hours window on a specific day.
      *
@@ -312,6 +368,7 @@ public class MeetingService {
         log.info("Calculated {} available time slots for attendeeId: {} on date: {}", availableSlots.size(), id, date);
         return availableSlots;
     }
+
 
     /**
      * Finds the common available time slots for a given set of attendees on a specific date.
@@ -343,56 +400,58 @@ public class MeetingService {
         return commonSlots;
     }
 
+
     /**
-     * Finds suitable meeting time slots and locations based on attendee availability and required duration.
-     * Refactored for better efficiency (Location-First Intersection).
+     * Finds suitable meeting time slots (as available intersection gaps) and locations.
      *
-     * @param request DTO containing attendee IDs, desired duration, and date.
-     * @return A list of potential meeting suggestions.
+     * @param request DTO containing attendee IDs, desired duration, date, and optional capacity.
+     * @return A list of potential meeting suggestion gaps at specific locations where everyone is free.
      */
-    public List<MeetingSuggestionDTO> findMeetingSuggestions(MeetingSuggestionRequestDTO request) {
+    public List<LocationTimeSlotDTO> findMeetingSuggestions(MeetingSuggestionRequestDTO request) {
         log.info("Finding meeting suggestions for attendeeIds: {}, date: {}, duration: {} mins",
                 request.attendeeIds(), request.date(), request.durationMinutes());
 
+        // Find common availability slots for the attendees
         CommonAvailabilityRequestDTO commonAvailabilityRequest = new CommonAvailabilityRequestDTO(
                 request.attendeeIds(),
                 request.date()
         );
         List<AvailableSlotDTO> commonSlots = getCommonAttendeeAvailability(commonAvailabilityRequest);
-
         if (commonSlots.isEmpty()) {
             log.info("No common available time slots found for the attendees on {}", request.date());
             return List.of();
         }
-
         log.debug("Found {} common slots before duration filter.", commonSlots.size());
-        // Filter common slots by duration
-        List<AvailableSlotDTO> sufficientDurationGaps = filterSlotsByDuration(commonSlots, request.durationMinutes());
+
+        int durationMinutes = request.durationMinutes();
+
+        // Filter common attendee slots by duration
+        List<AvailableSlotDTO> sufficientDurationGaps = filterSlotsByDuration(commonSlots, durationMinutes);
         if (sufficientDurationGaps.isEmpty()) {
-            log.info("No common available time slots found with sufficient duration ({} mins).", request.durationMinutes());
+            log.info("No common available time slots found with sufficient duration ({} mins).", durationMinutes);
             return List.of();
         }
         log.debug("Found {} common slots after duration filter.", sufficientDurationGaps.size());
 
-        // Find locations that match capacity
+        // Find available time slots for locations matching the capacity and meeting duration criteria
         int requiredCapacity = request.attendeeIds().size();
-        List<Location> suitableLocations = findLocationsByCapacityMin(requiredCapacity);
-        if (suitableLocations.isEmpty()) {
-            log.info("No locations found with sufficient capacity for {} attendees.", requiredCapacity);
+        LocationAvailabilityRequestDTO locationAvailabilityRequest = new LocationAvailabilityRequestDTO(
+                request.date(),
+                durationMinutes,
+                requiredCapacity
+        );
+        List<LocationTimeSlotDTO> locationSlots = getAvailabilityForLocationsByDuration(locationAvailabilityRequest);
+        if (locationSlots.isEmpty()) {
+            log.info("No available time slots found for locations on date: {}, duration >= {}, minCapacity >= {}", request.date(), durationMinutes, requiredCapacity);
             return List.of();
         }
-        log.debug("Found {} locations with capacity >= {}.", suitableLocations.size(), requiredCapacity);
+        log.debug("Found {} available time slots for locations.", locationSlots.size());
 
         // Filter locations availability time slots for matching requirements
-        List<MeetingSuggestionDTO> suggestions = generateLocationSuggestions(sufficientDurationGaps, suitableLocations, request.durationMinutes(), request.date());
+        List<LocationTimeSlotDTO> suggestions = calculateIntersectionSuggestions(sufficientDurationGaps, locationSlots, durationMinutes);
         log.info("Found {} meeting suggestions.", suggestions.size());
 
         return suggestions;
-    }
-
-    // Accepts ID, returns Meeting Entity
-    private Meeting findMeetingEntityById(Long id) {
-        return meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Meeting not found with id: " + id));
     }
 
 
@@ -400,6 +459,13 @@ public class MeetingService {
 
 
     // -- Fetch Methods ---
+
+
+    // Accepts ID, returns Meeting Entity
+    private Meeting findMeetingEntityById(Long id) {
+        return meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Meeting not found with id: " + id));
+    }
+
 
     // Accepts ID, returns Location Entity
     private Location findLocationEntityById(Long id) {
@@ -799,55 +865,45 @@ public class MeetingService {
                 .collect(Collectors.toList());
     }
 
+
     /**
-     * Generate potential meeting time windows for a specific date based on available time gaps, location and meeting duration.
+     *  Calculates the final suggestions by intersecting common attendee gaps with pre-filtered location slots.
+     *  Ensures the resulting intersection interval meets the required duration.
      *
-     * @param gaps            List of attendees' available time gaps.
-     * @param locations       List of suitable locations.
-     * @param durationMinutes The meeting minimal duration.
-     * @param date            The date of the meeting.
-     * @return List of MeetingSuggestionDTO with an effective time window start, end and available location.
+     * @param attendeeGaps Common available slots for all attendees (already duration-filtered upstream if needed).
+     * @param suitableLocationSlots Slots for locations meeting capacity and duration criteria.
+     * @param requiredDurationMinutes The duration the *final intersection slot* must satisfy.
+     * @return List of LocationTimeSlotDTO representing the final viable meeting slots.
      */
-    private List<MeetingSuggestionDTO> generateLocationSuggestions(
-            List<AvailableSlotDTO> gaps, List<Location> locations, int durationMinutes, LocalDate date) {
-        List<MeetingSuggestionDTO> suggestions = new ArrayList<>();
-        log.debug("Generating suggestions. Common Gaps: {}, Suitable Locations: {}", gaps.size(), locations.size());
+    public List<LocationTimeSlotDTO> calculateIntersectionSuggestions(
+            List<AvailableSlotDTO> attendeeGaps,
+            List<LocationTimeSlotDTO> suitableLocationSlots,
+            int requiredDurationMinutes) {
+        List<LocationTimeSlotDTO> finalSuggestions = new ArrayList<>();
+        log.debug("Calculating intersection between {} attendee gaps and {} suitable location slots.",
+                attendeeGaps.size(), suitableLocationSlots.size());
 
-        for (Location location : locations) {
-            log.debug("Processing location: {} (ID: {})", location.getName(), location.getId());
+        for (AvailableSlotDTO attendeeGap : attendeeGaps) {
+            for (LocationTimeSlotDTO locSlot : suitableLocationSlots) {
+                LocalDateTime overlapStart = maxTime(attendeeGap.startTime(), locSlot.availableSlot().startTime());
+                LocalDateTime overlapEnd = minTime(attendeeGap.endTime(), locSlot.availableSlot().endTime());
 
-            // Get available slots for location
-            List<AvailableSlotDTO> locationAvailability = getAvailableTimeForLocation(location.getId(), date);
-            log.trace("... Location {} has {} slots", location.getName(), locationAvailability.size());
-
-            // Find intersection between available slots and location's slots
-            List<AvailableSlotDTO> intersectionSlots = intersectAvailability(gaps, locationAvailability);
-            if (intersectionSlots.isEmpty()) {
-                log.debug("... No intersection found between provided slots and location {} availability.", location.getName());
-                continue;
-            }
-            log.trace("... Found {} intersection slots with location {}.", intersectionSlots.size(), location.getName());
-
-            // Filter slots by duration
-            List<AvailableSlotDTO> sufficientSlots = filterSlotsByDuration(intersectionSlots, durationMinutes);
-            if (sufficientSlots.isEmpty()) {
-                log.debug("... No sufficient slots found for location {} with duration >= {} mins.", location.getName(), durationMinutes);
-                continue;
-            }
-
-            // Add suggestions to the list
-            LocationDTO locationDTO = locationMapper.mapToLocationDTO(location);
-            for (AvailableSlotDTO slot : sufficientSlots) {
-                suggestions.add(new MeetingSuggestionDTO(slot.startTime(), slot.endTime(), locationDTO));
+                if (overlapStart.isBefore(overlapEnd)) {
+                    if (Duration.between(overlapStart, overlapEnd).toMinutes() >= requiredDurationMinutes) {
+                        AvailableSlotDTO intersectionSlot = new AvailableSlotDTO(overlapStart, overlapEnd);
+                        finalSuggestions.add(new LocationTimeSlotDTO(locSlot.location(), intersectionSlot));
+                        log.trace("Intersection found: Location '{}', Slot: {}", locSlot.location().name(), intersectionSlot);
+                    }
+                }
             }
         }
 
-        // Filter results by start time and location name
-        suggestions.sort(Comparator.comparing(MeetingSuggestionDTO::startTime).thenComparing(s -> s.locationDTO().name()));
+        List<LocationTimeSlotDTO> distinctSuggestions = finalSuggestions.stream().distinct().toList();
+        log.debug("Generated {} distinct intersection suggestions.", distinctSuggestions.size());
 
-        log.info("Generated {} meeting suggestions.", suggestions.size());
-        return suggestions;
+        return distinctSuggestions;
     }
+
 
     /**
      * Calculate working shift time for the specified date.

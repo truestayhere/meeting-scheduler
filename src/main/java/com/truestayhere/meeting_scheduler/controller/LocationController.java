@@ -1,10 +1,7 @@
 package com.truestayhere.meeting_scheduler.controller;
 
 
-import com.truestayhere.meeting_scheduler.dto.AvailableSlotDTO;
-import com.truestayhere.meeting_scheduler.dto.CreateLocationRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.LocationDTO;
-import com.truestayhere.meeting_scheduler.dto.UpdateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.*;
 import com.truestayhere.meeting_scheduler.service.LocationService;
 import com.truestayhere.meeting_scheduler.service.MeetingService;
 import jakarta.validation.Valid;
@@ -59,7 +56,7 @@ public class LocationController {
         return ResponseEntity.noContent().build(); // 204 NO CONTENT
     }
 
-    // GET /api/locations/id/availability?date=YYYY-MM-DD
+    // GET /api/locations/id/availability?date=YYYY-MM-DD - Get location available time slots for a specific date
     @GetMapping("/{id}/availability")
     public ResponseEntity<List<AvailableSlotDTO>> getLocationAvailability(
             @PathVariable Long id,
@@ -67,6 +64,16 @@ public class LocationController {
         List<AvailableSlotDTO> availableSlots = meetingService.getAvailableTimeForLocation(id, date);
         return ResponseEntity.ok(availableSlots);
     }
+
+
+    // POST /api/locations/availability-by-duration - Find locations with sufficient time gaps on a specific date
+    @PostMapping("/availability-by-duration")
+    public ResponseEntity<List<LocationTimeSlotDTO>> findLocationAvailabilityByDuration(
+            @Valid @RequestBody LocationAvailabilityRequestDTO requestDTO) {
+        List<LocationTimeSlotDTO> locationSlots = meetingService.getAvailabilityForLocationsByDuration(requestDTO);
+        return ResponseEntity.ok(locationSlots); // 200 OK
+    }
+
 
 
 }
