@@ -1,7 +1,12 @@
 package com.truestayhere.meeting_scheduler.controller;
 
 
-import com.truestayhere.meeting_scheduler.dto.*;
+import com.truestayhere.meeting_scheduler.dto.request.CreateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.LocationAvailabilityRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.UpdateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.response.AvailableSlotDTO;
+import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
+import com.truestayhere.meeting_scheduler.dto.response.LocationTimeSlotDTO;
 import com.truestayhere.meeting_scheduler.service.LocationService;
 import com.truestayhere.meeting_scheduler.service.MeetingService;
 import jakarta.validation.Valid;
@@ -73,7 +78,6 @@ public class LocationController {
         List<LocationTimeSlotDTO> locationSlots = meetingService.getAvailabilityForLocationsByDuration(requestDTO);
         return ResponseEntity.ok(locationSlots); // 200 OK
     }
-
 
 
 }

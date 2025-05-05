@@ -1,4 +1,4 @@
-package com.truestayhere.meeting_scheduler.dto;
+package com.truestayhere.meeting_scheduler.dto.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;

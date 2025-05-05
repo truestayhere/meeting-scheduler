@@ -1,17 +1,18 @@
 package com.truestayhere.meeting_scheduler.service;
 
-import com.truestayhere.meeting_scheduler.dto.AttendeeDTO;
-import com.truestayhere.meeting_scheduler.dto.CreateAttendeeRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.UpdateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.CreateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.UpdateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.response.AttendeeDTO;
 import com.truestayhere.meeting_scheduler.mapper.AttendeeMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,11 +22,11 @@ import java.util.Optional;
 @RequiredArgsConstructor // Lombok generates constructor with fields that are final
 @Transactional(readOnly = true) // This annotation ensures that transactions initiated by the service are atomic.
 // (readOnly = true) sets default reading mode to optimize operations with data.
+@Slf4j
 public class AttendeeService {
     private final AttendeeRepository attendeeRepository;
     private final AttendeeMapper attendeeMapper;
-
-    private static final Logger log = LoggerFactory.getLogger(AttendeeService.class);
+    private final PasswordEncoder passwordEncoder;
 
 
     // === CRUD METHODS ===
@@ -45,9 +46,20 @@ public class AttendeeService {
 
         checkDuplicateAttendee(requestDTO.email(), null);
 
-        // --- Save the Attendee ---
+        // --- Create the Attendee ---
 
         Attendee newAttendee = attendeeMapper.mapToAttendee(requestDTO);
+
+        // --- Hash the Password ---
+        String hashedPassword = passwordEncoder.encode(requestDTO.password());
+        newAttendee.setPassword(hashedPassword);
+
+        // Set default role
+        if (newAttendee.getRole() == null) {
+            newAttendee.setRole("ROLE_USER");
+        }
+
+        // --- Save the Attendee ---
 
         Attendee savedAttendee = attendeeRepository.save(newAttendee);
 
@@ -96,10 +108,19 @@ public class AttendeeService {
 
         checkDuplicateAttendee(requestDTO.email(), id);
 
-        // --- Save the Attendee ---
+        // --- Update the Attendee ---
 
-        existingAttendee.setName(requestDTO.name());
-        existingAttendee.setEmail(requestDTO.email());
+        attendeeMapper.updateAttendeeFromDto(requestDTO, existingAttendee);
+
+        // --- Update the Password ---
+
+        if (StringUtils.hasText(requestDTO.password())) {
+            String hashedPassword = passwordEncoder.encode(requestDTO.password());
+            existingAttendee.setPassword(hashedPassword);
+            log.debug("Password updated for attendee ID: {}", id);
+        }
+
+        // --- Save the Attendee ---
 
         Attendee savedAttendee = attendeeRepository.save(existingAttendee);
 

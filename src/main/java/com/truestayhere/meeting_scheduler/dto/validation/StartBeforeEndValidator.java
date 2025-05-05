@@ -2,15 +2,14 @@ package com.truestayhere.meeting_scheduler.dto.validation;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.BeansException;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 public class StartBeforeEndValidator implements ConstraintValidator<StartBeforeEnd, Object> {
-    private static final Logger log = LoggerFactory.getLogger(StartBeforeEndValidator.class);
 
     @Override
     public boolean isValid(Object value, ConstraintValidatorContext context) {

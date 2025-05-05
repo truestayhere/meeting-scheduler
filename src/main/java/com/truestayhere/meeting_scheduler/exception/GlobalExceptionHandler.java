@@ -1,11 +1,10 @@
 package com.truestayhere.meeting_scheduler.exception;
 
 
-import com.truestayhere.meeting_scheduler.dto.ErrorResponseDTO;
+import com.truestayhere.meeting_scheduler.dto.response.ErrorResponseDTO;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,15 +16,14 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import javax.naming.AuthenticationException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @ControllerAdvice // Marks this class as a global exception handler
+@Slf4j
 public class GlobalExceptionHandler {
-
-    // "static" ensures that there is only one Logger instance per class
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // Handler for @Valid Bean Validation errors
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -227,6 +225,25 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST); // 400 BAD REQUEST
+    }
+
+    // Handle authentication fail
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAuthenticationException(
+            AuthenticationException ex, HttpServletRequest request) {
+        log.warn("Authentication failure for request [{}]: {}", request.getRequestURI(), ex.getMessage());
+
+        String message = "Authentication failed: Invalid credentials or user not found.";
+
+        // Map to single-message ErrorResponseDTO
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.UNAUTHORIZED.value(),
+                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+                message,
+                request.getRequestURI()
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED); // 401 UNAUTHORIZED
     }
 
 

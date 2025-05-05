@@ -1,7 +1,11 @@
 package com.truestayhere.meeting_scheduler.controller;
 
 
-import com.truestayhere.meeting_scheduler.dto.*;
+import com.truestayhere.meeting_scheduler.dto.request.CreateMeetingRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.MeetingSuggestionRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.UpdateMeetingRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.response.LocationTimeSlotDTO;
+import com.truestayhere.meeting_scheduler.dto.response.MeetingDTO;
 import com.truestayhere.meeting_scheduler.service.MeetingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

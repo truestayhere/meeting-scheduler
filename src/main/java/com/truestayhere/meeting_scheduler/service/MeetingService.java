@@ -1,6 +1,10 @@
 package com.truestayhere.meeting_scheduler.service;
 
-import com.truestayhere.meeting_scheduler.dto.*;
+import com.truestayhere.meeting_scheduler.dto.request.*;
+import com.truestayhere.meeting_scheduler.dto.response.AvailableSlotDTO;
+import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
+import com.truestayhere.meeting_scheduler.dto.response.LocationTimeSlotDTO;
+import com.truestayhere.meeting_scheduler.dto.response.MeetingDTO;
 import com.truestayhere.meeting_scheduler.exception.MeetingConflictException;
 import com.truestayhere.meeting_scheduler.mapper.LocationMapper;
 import com.truestayhere.meeting_scheduler.mapper.MeetingMapper;
@@ -12,8 +16,7 @@ import com.truestayhere.meeting_scheduler.repository.LocationRepository;
 import com.truestayhere.meeting_scheduler.repository.MeetingRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,8 +31,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class MeetingService {
-    private static final Logger log = LoggerFactory.getLogger(MeetingService.class);
     // Default working hours
     private static final LocalTime DEFAULT_WORKING_START_TIME = LocalTime.of(9, 0);
     private static final LocalTime DEFAULT_WORKING_END_TIME = LocalTime.of(17, 0);
@@ -867,11 +870,11 @@ public class MeetingService {
 
 
     /**
-     *  Calculates the final suggestions by intersecting common attendee gaps with pre-filtered location slots.
-     *  Ensures the resulting intersection interval meets the required duration.
+     * Calculates the final suggestions by intersecting common attendee gaps with pre-filtered location slots.
+     * Ensures the resulting intersection interval meets the required duration.
      *
-     * @param attendeeGaps Common available slots for all attendees (already duration-filtered upstream if needed).
-     * @param suitableLocationSlots Slots for locations meeting capacity and duration criteria.
+     * @param attendeeGaps            Common available slots for all attendees (already duration-filtered upstream if needed).
+     * @param suitableLocationSlots   Slots for locations meeting capacity and duration criteria.
      * @param requiredDurationMinutes The duration the *final intersection slot* must satisfy.
      * @return List of LocationTimeSlotDTO representing the final viable meeting slots.
      */

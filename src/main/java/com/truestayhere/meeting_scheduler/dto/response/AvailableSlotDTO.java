@@ -1,4 +1,4 @@
-package com.truestayhere.meeting_scheduler.dto;
+package com.truestayhere.meeting_scheduler.dto.response;
 
 import java.time.LocalDateTime;
 

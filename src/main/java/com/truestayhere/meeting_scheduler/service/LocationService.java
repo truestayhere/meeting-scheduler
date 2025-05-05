@@ -1,15 +1,14 @@
 package com.truestayhere.meeting_scheduler.service;
 
-import com.truestayhere.meeting_scheduler.dto.CreateLocationRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.LocationDTO;
-import com.truestayhere.meeting_scheduler.dto.UpdateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.CreateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.UpdateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
 import com.truestayhere.meeting_scheduler.mapper.LocationMapper;
 import com.truestayhere.meeting_scheduler.model.Location;
 import com.truestayhere.meeting_scheduler.repository.LocationRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +19,10 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class LocationService {
     private final LocationRepository locationRepository;
     private final LocationMapper locationMapper;
-
-    private static final Logger log = LoggerFactory.getLogger(LocationService.class);
 
 
     // === CRUD METHODS ===
@@ -44,9 +42,11 @@ public class LocationService {
 
         checkDuplicateLocation(requestDTO.name(), null);
 
-        // --- Save the Location ---
+        // --- Create the Location ---
 
         Location newLocation = locationMapper.mapToLocation(requestDTO);
+
+        // --- Save the Location ---
 
         Location savedLocation = locationRepository.save(newLocation);
 
@@ -95,10 +95,11 @@ public class LocationService {
 
         checkDuplicateLocation(requestDTO.name(), id);
 
-        // --- Save the Location ---
+        // --- Update the Location ---
 
-        existingLocation.setName(requestDTO.name());
-        existingLocation.setCapacity(requestDTO.capacity());
+        locationMapper.updateLocationFromDto(requestDTO, existingLocation);
+
+        // --- Save the Location ---
 
         Location savedLocation = locationRepository.save(existingLocation);
 

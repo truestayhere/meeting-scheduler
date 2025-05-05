@@ -1,9 +1,9 @@
 package com.truestayhere.meeting_scheduler.mapper;
 
 
-import com.truestayhere.meeting_scheduler.dto.AttendeeDTO;
-import com.truestayhere.meeting_scheduler.dto.CreateAttendeeRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.UpdateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.CreateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.UpdateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.response.AttendeeDTO;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import org.springframework.stereotype.Component;
 
@@ -52,14 +52,13 @@ public class AttendeeMapper {
             return null;
         }
 
-        Attendee attendee = new Attendee(
-                requestDTO.name(),
-                requestDTO.email()
-        );
+        Attendee attendee = new Attendee();
+
+        attendee.setName(requestDTO.name());
+        attendee.setEmail(requestDTO.email());
 
         // Default working start time 9:00
         attendee.setWorkingStartTime(requestDTO.workingStartTime());
-
         // Default working end time 17:00
         attendee.setWorkingEndTime(requestDTO.workingEndTime());
 
@@ -67,22 +66,18 @@ public class AttendeeMapper {
     }
 
     // Map from UpdateAttendeeRequestDTO to Attendee Entity
-    public Attendee mapToAttendee(UpdateAttendeeRequestDTO requestDTO) {
-        if (requestDTO == null) {
-            return null;
+    public void updateAttendeeFromDto(UpdateAttendeeRequestDTO requestDTO, Attendee attendee) {
+        if (requestDTO.name() != null) {
+            attendee.setName(requestDTO.name());
         }
-
-        Attendee attendee = new Attendee(
-                requestDTO.name(),
-                requestDTO.email()
-        );
-
-        // Default working start time 9:00
-        attendee.setWorkingStartTime(requestDTO.workingStartTime());
-
-        // Default working end time 17:00
-        attendee.setWorkingEndTime(requestDTO.workingEndTime());
-
-        return attendee;
+        if (requestDTO.email() != null) {
+            attendee.setEmail(requestDTO.email());
+        }
+        if (requestDTO.workingStartTime() != null) {
+            attendee.setWorkingStartTime(requestDTO.workingStartTime());
+        }
+        if (requestDTO.workingEndTime() != null) {
+            attendee.setWorkingEndTime(requestDTO.workingEndTime());
+        }
     }
 }

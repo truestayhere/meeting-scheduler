@@ -1,4 +1,4 @@
-package com.truestayhere.meeting_scheduler.dto;
+package com.truestayhere.meeting_scheduler.dto.request;
 
 import com.truestayhere.meeting_scheduler.dto.validation.StartBeforeEnd;
 import jakarta.validation.constraints.*;
@@ -6,8 +6,9 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
 import java.util.Set;
 
+// Request sends it from client to create a new meeting
 @StartBeforeEnd
-public record UpdateMeetingRequestDTO(
+public record CreateMeetingRequestDTO(
         @NotBlank(message = "Meeting title must not be blank.")
         @Size(max = 200, message = "Meeting title must not exceed 200 characters.")
         String title,
@@ -23,6 +24,5 @@ public record UpdateMeetingRequestDTO(
         Long locationId,
 
         @NotEmpty(message = "Attendee list cannot be empty.") // @NotEmpty used for Collections
-        Set<@NotNull Long> attendeeIds
-) {
+        Set<@NotNull Long> attendeeIds) {
 }

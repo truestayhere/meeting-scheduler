@@ -1,4 +1,4 @@
-package com.truestayhere.meeting_scheduler.dto;
+package com.truestayhere.meeting_scheduler.dto.response;
 
 // Java records are immutable by default.
 // Constructor with all fields, getters, toString, equals and HashCode methods are generated automatically.

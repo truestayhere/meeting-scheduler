@@ -1,8 +1,8 @@
 package com.truestayhere.meeting_scheduler.mapper;
 
-import com.truestayhere.meeting_scheduler.dto.CreateLocationRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.LocationDTO;
-import com.truestayhere.meeting_scheduler.dto.UpdateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.CreateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.UpdateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
 import com.truestayhere.meeting_scheduler.model.Location;
 import org.springframework.stereotype.Component;
 
@@ -67,22 +67,18 @@ public class LocationMapper {
     }
 
     // Map from UpdateLocationRequestDTO to Location Entity
-    public Location mapToLocation(UpdateLocationRequestDTO requestDTO) {
-        if (requestDTO == null) {
-            return null;
+    public void updateLocationFromDto(UpdateLocationRequestDTO requestDTO, Location location) {
+        if (requestDTO.name() != null) {
+            location.setName(requestDTO.name());
         }
-        Location location = new Location();
-
-        location.setName(requestDTO.name());
-        location.setCapacity(requestDTO.capacity());
-
-        // Default working start time 9:00
-        location.setWorkingStartTime(requestDTO.workingStartTime());
-
-        // Default working end time 17:00
-        location.setWorkingEndTime(requestDTO.workingEndTime());
-
-
-        return location;
+        if (requestDTO.capacity() != null) {
+            location.setCapacity(requestDTO.capacity());
+        }
+        if (requestDTO.workingStartTime() != null) {
+            location.setWorkingStartTime(requestDTO.workingStartTime());
+        }
+        if (requestDTO.workingEndTime() != null) {
+            location.setWorkingEndTime(requestDTO.workingEndTime());
+        }
     }
 }
