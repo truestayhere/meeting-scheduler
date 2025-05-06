@@ -18,6 +18,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import javax.naming.AuthenticationException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -244,6 +245,37 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED); // 401 UNAUTHORIZED
+    }
+
+
+    // Handle deletion of resource already in use exception
+    @ExceptionHandler(ResourceInUseException.class)
+    public ResponseEntity<ErrorResponseDTO> handleResourceInUseException(
+            ResourceInUseException ex, HttpServletRequest request) {
+
+        // Construct the message list
+        List<String> messages = new ArrayList<>();
+        messages.add(ex.getMessage());
+
+        // Add the conflicting meeting Ids to the list
+        if (ex.getConflictingMeetingIds() != null && !ex.getConflictingMeetingIds().isEmpty()) {
+            messages.add("Conflicting Meeting Ids: " +
+                    ex.getConflictingMeetingIds().stream()
+                            .map(String::valueOf)
+                            .collect(Collectors.joining(", ")));
+        }
+
+        // Map to ErrorResponse DTO with the message list
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                messages,
+                request.getRequestURI()
+        );
+
+        log.warn("Resource conflict on request [{}]: Message: {}, Conflicting IDs: {}", request.getRequestURI(), ex.getMessage(), ex.getConflictingMeetingIds());
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT); // 409 CONFLICT
     }
 
 

@@ -206,9 +206,14 @@ public class MeetingService {
             throw new EntityNotFoundException("Meeting not found with ID: " + id);
         }
 
-        log.info("Successfully deleted meeting with ID: {}", id);
         meetingRepository.deleteById(id);
+        log.info("Successfully deleted meeting with ID: {}", id);
     }
+
+    // === END CRUD METHODS ===
+
+    // === AVAILABILITY METHODS ===
+
 
     /**
      * Finds meetings for a specific attendee withing a given time range.
@@ -457,6 +462,7 @@ public class MeetingService {
         return suggestions;
     }
 
+    // === END AVAILABILITY METHODS ===
 
     // === HELPER METHODS ===
 
@@ -723,7 +729,7 @@ public class MeetingService {
 
     // -- End of Validation Methods ---
 
-    // --- Availability Methods ---
+    // --- Availability Helper Methods ---
 
     /**
      * Calculates the time slots where ALL provided attendees are available on a given date.
@@ -941,7 +947,7 @@ public class MeetingService {
         return new TimeWindow(windowStart, windowEnd);
     }
 
-    // --- End of Availability Methods ---
+    // --- End of Availability Helper Methods ---
 
 
     // --- Time Management Methods ---
@@ -978,4 +984,5 @@ public class MeetingService {
     }
 
     // --- End of Time Management Methods ---
+    // === END HELPER METHODS ===
 }

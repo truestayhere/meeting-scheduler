@@ -3,9 +3,12 @@ package com.truestayhere.meeting_scheduler.service;
 import com.truestayhere.meeting_scheduler.dto.request.CreateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.request.UpdateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
+import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
 import com.truestayhere.meeting_scheduler.mapper.LocationMapper;
 import com.truestayhere.meeting_scheduler.model.Location;
+import com.truestayhere.meeting_scheduler.model.Meeting;
 import com.truestayhere.meeting_scheduler.repository.LocationRepository;
+import com.truestayhere.meeting_scheduler.repository.MeetingRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,7 @@ import java.util.Optional;
 @Slf4j
 public class LocationService {
     private final LocationRepository locationRepository;
+    private final MeetingRepository meetingRepository;
     private final LocationMapper locationMapper;
 
 
@@ -121,8 +125,12 @@ public class LocationService {
             throw new EntityNotFoundException("Location not found with id: " + id);
         }
 
-        log.info("Successfully deleted location with ID: {}", id);
+        // --- Location Occupation Check ---
+        checkMeetingExistsForLocation(id);
+
+        // --- Delete the location ---
         locationRepository.deleteById(id);
+        log.info("Successfully deleted location with ID: {}", id);
     }
 
 
@@ -134,6 +142,29 @@ public class LocationService {
         return locationRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + id));
     }
+
+
+    /**
+     * Checks if the specified location is associated with any meetings.
+     * Throws ResourceInUseException if meetings are found.
+     *
+     * @param id The ID of the location to check.
+     * @throws ResourceInUseException if the location is used in meetings.
+     */
+    private void checkMeetingExistsForLocation(Long id) {
+        List<Meeting> conflictingMeetings = meetingRepository.findByLocation_id(id);
+        if (!conflictingMeetings.isEmpty()) {
+            List<Long> meetingIds = conflictingMeetings
+                    .stream()
+                    .map(Meeting::getId) // Only need meeting Ids
+                    .distinct() // Remove duplicate meetings
+                    .toList();
+            String message = String.format("Location cannot be deleted because it is used in %d meeting(s). See details.", meetingIds.size());
+            log.warn("Attempted to delete location ID: {} which is used in meetings: {}", id, meetingIds);
+            throw new ResourceInUseException(message, meetingIds);
+        }
+    }
+
 
     // Location Duplicates Check - Accepts String, ID, throws IllegalArgumentException
     private void checkDuplicateLocation(String name, Long idToExclude) {

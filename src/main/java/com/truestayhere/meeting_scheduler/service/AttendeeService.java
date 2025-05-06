@@ -3,9 +3,12 @@ package com.truestayhere.meeting_scheduler.service;
 import com.truestayhere.meeting_scheduler.dto.request.CreateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.request.UpdateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.AttendeeDTO;
+import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
 import com.truestayhere.meeting_scheduler.mapper.AttendeeMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
+import com.truestayhere.meeting_scheduler.model.Meeting;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
+import com.truestayhere.meeting_scheduler.repository.MeetingRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +28,7 @@ import java.util.Optional;
 @Slf4j
 public class AttendeeService {
     private final AttendeeRepository attendeeRepository;
+    private final MeetingRepository meetingRepository;
     private final AttendeeMapper attendeeMapper;
     private final PasswordEncoder passwordEncoder;
 
@@ -142,8 +146,12 @@ public class AttendeeService {
             throw new EntityNotFoundException("Attendee not found with ID: " + id);
         }
 
-        log.info("Successfully deleted attendee with ID: {}", id);
+        // --- Attendee Occupation Check ---
+        checkMeetingsExistForAttendee(id);
+
+        // --- Delete the Attendee
         attendeeRepository.deleteById(id);
+        log.info("Successfully deleted attendee with ID: {}", id);
     }
 
 
@@ -154,6 +162,28 @@ public class AttendeeService {
     private Attendee findAttendeeEntityById(Long id) {
         return attendeeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Attendee not found with ID: " + id));
+    }
+
+
+    /**
+     * Checks if the specified attendee is associated with any meetings.
+     * Throws ResourceInUseException if meetings are found.
+     *
+     * @param id The ID of the attendee to check.
+     * @throws ResourceInUseException if the attendee is part of meetings.
+     */
+    private void checkMeetingsExistForAttendee(Long id) {
+        List<Meeting> conflictingMeetings = meetingRepository.findByAttendees_id(id);
+        if (!conflictingMeetings.isEmpty()) {
+            List<Long> meetingIds = conflictingMeetings
+                    .stream()
+                    .map(Meeting::getId)
+                    .distinct()
+                    .toList();
+            String message = String.format("Attendee cannot be deleted because they are included in %d meeting(s). See details.", meetingIds.size());
+            log.warn("Attempted to delete attendee ID: {} who is part of meetings: {}", id, meetingIds);
+            throw new ResourceInUseException(message, meetingIds);
+        }
     }
 
 
