@@ -122,7 +122,7 @@ public class LocationService {
         log.debug("Attempting to delete location with ID: {}", id);
 
         if (!locationRepository.existsById(id)) {
-            throw new EntityNotFoundException("Location not found with id: " + id);
+            throw new EntityNotFoundException("Location not found with ID: " + id);
         }
 
         // --- Location Occupation Check ---
@@ -140,7 +140,7 @@ public class LocationService {
     // Accepts ID, returns Location Entity
     private Location findLocationEntityById(Long id) {
         return locationRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Location not found with ID: " + id));
     }
 
 

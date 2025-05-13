@@ -258,9 +258,9 @@ public class GlobalExceptionHandler {
         messages.add(ex.getMessage());
 
         // Add the conflicting meeting Ids to the list
-        if (ex.getConflictingMeetingIds() != null && !ex.getConflictingMeetingIds().isEmpty()) {
-            messages.add("Conflicting Meeting Ids: " +
-                    ex.getConflictingMeetingIds().stream()
+        if (ex.getConflictingResourceIds() != null && !ex.getConflictingResourceIds().isEmpty()) {
+            messages.add("Conflicting Resource Ids: " +
+                    ex.getConflictingResourceIds().stream()
                             .map(String::valueOf)
                             .collect(Collectors.joining(", ")));
         }
@@ -274,7 +274,7 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
 
-        log.warn("Resource conflict on request [{}]: Message: {}, Conflicting IDs: {}", request.getRequestURI(), ex.getMessage(), ex.getConflictingMeetingIds());
+        log.warn("Resource conflict on request [{}]: Message: {}, Conflicting IDs: {}", request.getRequestURI(), ex.getMessage(), ex.getConflictingResourceIds());
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT); // 409 CONFLICT
     }
 

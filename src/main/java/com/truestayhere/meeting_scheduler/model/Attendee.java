@@ -62,6 +62,4 @@ public class Attendee {
         this.role = role;
     }
 
-    // equals/hashCode (to be added later)
-
 }

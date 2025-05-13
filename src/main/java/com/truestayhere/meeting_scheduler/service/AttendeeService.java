@@ -199,8 +199,8 @@ public class AttendeeService {
 
             if (!duplicateAttendee.getId().equals(idToExclude)) {
                 String errorMessage = (idToExclude == null)
-                        ? "Attendee with email " + email + " already exists."
-                        : "Another attendee (" + duplicateAttendee.getId() + ") already exists with email " + email + ".";
+                        ? "Attendee with email '" + email + "' already exists."
+                        : "Another attendee (" + duplicateAttendee.getId() + ") already exists with email '" + email + "'.";
                 log.warn(errorMessage);
                 throw new IllegalArgumentException(errorMessage);
             }

@@ -11,15 +11,15 @@ import java.util.List;
 @Getter
 public class ResourceInUseException extends RuntimeException {
 
-    private final List<Long> conflictingMeetingIds;
+    private final List<Long> conflictingResourceIds;
 
-    public ResourceInUseException(String message, List<Long> conflictingMeetingIds) {
+    public ResourceInUseException(String message, List<Long> conflictingResourceIds) {
         super(message);
-        this.conflictingMeetingIds = (conflictingMeetingIds != null) ? conflictingMeetingIds : List.of();
+        this.conflictingResourceIds = (conflictingResourceIds != null) ? conflictingResourceIds : List.of();
     }
 
     public ResourceInUseException(String message) {
         super(message);
-        this.conflictingMeetingIds = List.of();
+        this.conflictingResourceIds = List.of();
     }
 }
