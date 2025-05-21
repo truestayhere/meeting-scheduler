@@ -55,6 +55,14 @@ public class MeetingService {
                 requestDTO.locationId(),
                 requestDTO.attendeeIds() != null ? requestDTO.attendeeIds().size() : 0);
 
+        // --- Fetch Location and Attendees Data ---
+
+        Location location = findLocationEntityById(requestDTO.locationId());
+        log.debug("Fetched location entity with ID: {}", location.getId());
+
+        Set<Attendee> attendees = findAttendeesById(requestDTO.attendeeIds());
+        log.debug("Fetched {} attendee entities", attendees.size());
+
         // --- Duplicates Check ---
 
         checkMeetingDuplicates(requestDTO.locationId(), requestDTO.startTime(), requestDTO.endTime(), null);
@@ -65,14 +73,6 @@ public class MeetingService {
         checkLocationConflict(requestDTO.locationId(), requestDTO.startTime(), requestDTO.endTime(), null);
         checkAttendeeConflicts(requestDTO.attendeeIds(), requestDTO.startTime(), requestDTO.endTime(), null);
         log.debug("Conflict checks passed");
-
-        // --- Fetch Location and Attendees Data ---
-
-        Location location = findLocationEntityById(requestDTO.locationId());
-        log.debug("Fetched location entity with ID: {}", location.getId());
-
-        Set<Attendee> attendees = findAttendeesById(requestDTO.attendeeIds());
-        log.debug("Fetched {} attendee entities", attendees.size());
 
         // --- Working Hours Check ---
 
@@ -143,30 +143,50 @@ public class MeetingService {
 
         Meeting existingMeeting = findMeetingEntityById(id);
 
+        LocalDateTime effectiveStartTime = (requestDTO.startTime() != null) ? requestDTO.startTime() : existingMeeting.getStartTime();
+        LocalDateTime effectiveEndTime = (requestDTO.endTime() != null) ? requestDTO.endTime() : existingMeeting.getEndTime();
+        Long effectiveLocationId = (requestDTO.locationId() != null) ? requestDTO.locationId() : existingMeeting.getLocation().getId();
+        Set<Long> effectiveAttendeeIds = (requestDTO.attendeeIds() != null) ?
+                requestDTO.attendeeIds() :
+                existingMeeting.getAttendees()
+                        .stream()
+                        .map(Attendee::getId)
+                        .collect(Collectors.toSet());
+
+        // --- Fetch Location and Attendees Data ---
+
+        Location location;
+        if (requestDTO.locationId() != null) {
+            location = findLocationEntityById(requestDTO.locationId());
+            log.debug("Fetched location entity with ID: {}", location.getId());
+        } else {
+            location = existingMeeting.getLocation();
+        }
+
+        Set<Attendee> attendees;
+        if (requestDTO.attendeeIds() != null) {
+            attendees = findAttendeesById(requestDTO.attendeeIds());
+            log.debug("Fetched {} attendee entities", attendees.size());
+        } else {
+            attendees = existingMeeting.getAttendees();
+        }
+
         // --- Duplicates Check ---
 
-        checkMeetingDuplicates(requestDTO.locationId(), requestDTO.startTime(), requestDTO.endTime(), id);
+        checkMeetingDuplicates(effectiveLocationId, effectiveStartTime, effectiveEndTime, id);
 
         // --- Conflict/Overlap Check ---
 
         log.debug("Performing conflict checks before updating meeting ID: {}", id);
-        checkLocationConflict(requestDTO.locationId(), requestDTO.startTime(), requestDTO.endTime(), id);
-        checkAttendeeConflicts(requestDTO.attendeeIds(), requestDTO.startTime(), requestDTO.endTime(), id);
+        checkLocationConflict(effectiveLocationId, effectiveStartTime, effectiveEndTime, id);
+        checkAttendeeConflicts(effectiveAttendeeIds, effectiveStartTime, effectiveEndTime, id);
         log.debug("Conflict checks passed for update");
-
-        // --- Fetch Location and Attendees Data ---
-
-        Location location = findLocationEntityById(requestDTO.locationId());
-        log.debug("Fetched location entity with ID: {}", location.getId());
-
-        Set<Attendee> attendees = findAttendeesById(requestDTO.attendeeIds());
-        log.debug("Fetched {} attendee entities", attendees.size());
 
         // --- Working Hours Check ---
 
         log.debug("Checking if updated meeting time is within location and attendees working hours.");
-        checkMeetingWithinLocationWorkingHours(location, requestDTO.startTime(), requestDTO.endTime());
-        checkMeetingWithinAttendeesWorkingHours(attendees, requestDTO.startTime(), requestDTO.endTime());
+        checkMeetingWithinLocationWorkingHours(location, effectiveStartTime, effectiveEndTime);
+        checkMeetingWithinAttendeesWorkingHours(attendees, effectiveStartTime, effectiveEndTime);
         log.debug("Update working hours checks passed");
 
         // --- Capacity Check ---
@@ -175,11 +195,11 @@ public class MeetingService {
         checkLocationCapacity(location, attendees.size());
         log.debug("Update capacity check passed");
 
-        // --- Creating Meeting ---
+        // --- Updating Meeting ---
 
-        existingMeeting.setTitle(requestDTO.title());
-        existingMeeting.setStartTime(requestDTO.startTime());
-        existingMeeting.setEndTime(requestDTO.endTime());
+        if (requestDTO.title() != null) existingMeeting.setTitle(requestDTO.title());
+        if (requestDTO.startTime() != null) existingMeeting.setStartTime(requestDTO.startTime());
+        if (requestDTO.endTime() != null) existingMeeting.setEndTime(requestDTO.endTime());
         existingMeeting.setLocation(location);
         existingMeeting.setAttendees(attendees);
 
@@ -472,14 +492,14 @@ public class MeetingService {
 
     // Accepts ID, returns Meeting Entity
     private Meeting findMeetingEntityById(Long id) {
-        return meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Meeting not found with id: " + id));
+        return meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Meeting not found with ID: " + id));
     }
 
 
     // Accepts ID, returns Location Entity
     private Location findLocationEntityById(Long id) {
         return locationRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Location not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Location not found with ID: " + id));
     }
 
     // Accepts int, returns List<Location>
@@ -494,7 +514,7 @@ public class MeetingService {
     // Accepts ID, returns Attendee Entity
     private Attendee findAttendeeEntityById(Long id) {
         return attendeeRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Attendee not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Attendee not found with ID: " + id));
     }
 
     // Accepts Set<ID>, returns Set<Attendee>
@@ -510,6 +530,11 @@ public class MeetingService {
         }
         return attendees;
     }
+
+    // -- End Fetch Methods ---
+
+    // -- Validation Methods ---
+
 
     // Location Conflict Check (meeting overlap) - Accepts ID, LocalDateTime, throws MeetingConflictException
     private void checkLocationConflict(Long locationId, LocalDateTime startTime, LocalDateTime endTime, Long meetingIdToExclude) {
@@ -537,12 +562,6 @@ public class MeetingService {
         }
         log.debug("No location conflict found for locationId: {}", locationId);
     }
-
-
-    // -- End of Fetch Methods ---
-
-
-    // -- Validation Methods ---
 
     // Attendee conflict Check (meeting overlap) - Accepts ID, LocalDateTime, throws MeetingConflictException
     private void checkAttendeeConflicts(Set<Long> attendeeIds, LocalDateTime startTime, LocalDateTime endTime, Long meetingIdToExclude) {
@@ -676,6 +695,10 @@ public class MeetingService {
         log.debug("Meeting attendees' count fits location's capacity.");
     }
 
+    // -- End of Validation Methods ---
+
+    // --- Availability Helper Methods ---
+
     /**
      * Finds available time slots between booked meetings in a specified time window.
      *
@@ -726,10 +749,6 @@ public class MeetingService {
         log.info("Calculated {} available time slots between {} and {}", availableSlots.size(), windowStart, windowEnd);
         return availableSlots;
     }
-
-    // -- End of Validation Methods ---
-
-    // --- Availability Helper Methods ---
 
     /**
      * Calculates the time slots where ALL provided attendees are available on a given date.
@@ -914,6 +933,11 @@ public class MeetingService {
     }
 
 
+    // --- End of Availability Helper Methods ---
+
+
+    // --- Time Management Methods ---
+
     /**
      * Calculate working shift time for the specified date.
      *
@@ -946,11 +970,6 @@ public class MeetingService {
 
         return new TimeWindow(windowStart, windowEnd);
     }
-
-    // --- End of Availability Helper Methods ---
-
-
-    // --- Time Management Methods ---
 
     /**
      * Returns LocalDateTime object set after another one.

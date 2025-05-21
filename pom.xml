@@ -98,7 +98,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>
-                        --enable-preview --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.time=ALL-UNNAMED -javaagent:${user.home}/.m2/repository/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
+                        --enable-preview --add-opens java.base/java.lang=ALL-UNNAMED --add-opens
+                        java.base/java.util=ALL-UNNAMED --add-opens java.base/java.time=ALL-UNNAMED
+                        -javaagent:${user.home}/.m2/repository/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
                     </argLine>
                 </configuration>
             </plugin>

@@ -95,9 +95,11 @@ public class LocationService {
 
         Location existingLocation = findLocationEntityById(id);
 
+        String effectiveName = (requestDTO.name() != null) ? requestDTO.name() : existingLocation.getName();
+
         // --- Duplicates Check ---
 
-        checkDuplicateLocation(requestDTO.name(), id);
+        checkDuplicateLocation(effectiveName, id);
 
         // --- Update the Location ---
 

@@ -108,9 +108,11 @@ public class AttendeeService {
 
         Attendee existingAttendee = findAttendeeEntityById(id);
 
+        String effectiveEmail = (requestDTO.email() != null) ? requestDTO.email() : existingAttendee.getEmail();
+
         // --- Duplicates Check ---
 
-        checkDuplicateAttendee(requestDTO.email(), id);
+        checkDuplicateAttendee(effectiveEmail, id);
 
         // --- Update the Attendee ---
 

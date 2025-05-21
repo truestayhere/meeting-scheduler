@@ -2,10 +2,13 @@ package com.truestayhere.meeting_scheduler.service;
 
 import com.truestayhere.meeting_scheduler.dto.request.CreateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.request.UpdateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.UpdateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.AttendeeDTO;
+import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
 import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
 import com.truestayhere.meeting_scheduler.mapper.AttendeeMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
+import com.truestayhere.meeting_scheduler.model.Location;
 import com.truestayhere.meeting_scheduler.model.Meeting;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import com.truestayhere.meeting_scheduler.repository.MeetingRepository;
@@ -33,13 +36,10 @@ public class AttendeeServiceTest {
 
     @Mock
     private AttendeeRepository attendeeRepository;
-
     @Mock
     private MeetingRepository meetingRepository;
-
     @Mock
     private AttendeeMapper attendeeMapper;
-
     @Mock
     private PasswordEncoder passwordEncoder;
 
@@ -70,6 +70,7 @@ public class AttendeeServiceTest {
                 null
         );
 
+        // All fields updated by default
         defaultUpdateRequest = new UpdateAttendeeRequestDTO(
                 DEFAULT_ATTENDEE_NAME + " Updated",
                 "attendeeupdated@test.com",
@@ -249,10 +250,10 @@ public class AttendeeServiceTest {
         UpdateAttendeeRequestDTO updateRequest = new UpdateAttendeeRequestDTO(
                 defaultUpdateRequest.name(),
                 defaultUpdateRequest.email(),
-                null,
-                null,
+                null, // the password is NOT updated
+                defaultUpdateRequest.role(),
                 defaultUpdateRequest.workingStartTime(),
-                null
+                defaultUpdateRequest.workingEndTime()
         );
 
         Attendee existingAttendee = new Attendee();
@@ -260,10 +261,6 @@ public class AttendeeServiceTest {
         existingAttendee.setName(defaultAttendee.getName());
         existingAttendee.setEmail(defaultAttendee.getName());
         existingAttendee.setPassword(DEFAULT_HASHED_PASSWORD);
-
-        AttendeeDTO expectedResponse = new AttendeeDTO(
-                attendeeId, updateRequest.name(), updateRequest.email()
-        );
 
         when(attendeeRepository.findById(attendeeId)).thenReturn(Optional.of(existingAttendee));
         when(attendeeRepository.findByEmail(updateRequest.email())).thenReturn(Optional.empty());
@@ -285,11 +282,17 @@ public class AttendeeServiceTest {
         savedAttendeeAfterUpdate.setId(attendeeId);
         savedAttendeeAfterUpdate.setName(updateRequest.name());
         savedAttendeeAfterUpdate.setEmail(updateRequest.email());
-        savedAttendeeAfterUpdate.setRole(existingAttendee.getRole());
+        savedAttendeeAfterUpdate.setPassword(existingAttendee.getPassword());
+        savedAttendeeAfterUpdate.setRole(updateRequest.role());
         savedAttendeeAfterUpdate.setWorkingStartTime(updateRequest.workingStartTime());
-        savedAttendeeAfterUpdate.setWorkingEndTime(existingAttendee.getWorkingEndTime());
+        savedAttendeeAfterUpdate.setWorkingEndTime(updateRequest.workingEndTime());
 
         when(attendeeRepository.save(attendeeCaptor.capture())).thenReturn(savedAttendeeAfterUpdate);
+
+        AttendeeDTO expectedResponse = new AttendeeDTO(
+                savedAttendeeAfterUpdate.getId(), savedAttendeeAfterUpdate.getName(), savedAttendeeAfterUpdate.getEmail()
+        );
+
         when(attendeeMapper.mapToAttendeeDTO(savedAttendeeAfterUpdate)).thenReturn(expectedResponse);
 
         AttendeeDTO result = attendeeService.updateAttendee(attendeeId, updateRequest);
@@ -302,7 +305,7 @@ public class AttendeeServiceTest {
 
         assertNotNull(capturedAttendee);
         assertEquals(attendeeId, capturedAttendee.getId());
-        assertEquals(DEFAULT_HASHED_PASSWORD, capturedAttendee.getPassword(), "Password should not have changed.");
+        assertEquals(existingAttendee.getPassword(), capturedAttendee.getPassword(), "Password should not have changed.");
 
         if (updateRequest.name() != null) {
             assertEquals(updateRequest.name(), capturedAttendee.getName(),
@@ -362,9 +365,9 @@ public class AttendeeServiceTest {
                 defaultUpdateRequest.name(),
                 defaultUpdateRequest.email(),
                 newRawPassword,
-                null,
+                defaultUpdateRequest.role(),
                 defaultUpdateRequest.workingStartTime(),
-                null
+                defaultUpdateRequest.workingEndTime()
         );
 
         Attendee existingAttendee = new Attendee();
@@ -372,10 +375,6 @@ public class AttendeeServiceTest {
         existingAttendee.setName(defaultAttendee.getName());
         existingAttendee.setEmail(defaultAttendee.getName());
         existingAttendee.setPassword(DEFAULT_HASHED_PASSWORD);
-
-        AttendeeDTO expectedResponse = new AttendeeDTO(
-                attendeeId, updateRequestWithPassword.name(), updateRequestWithPassword.email()
-        );
 
         when(attendeeRepository.findById(attendeeId)).thenReturn(Optional.of(existingAttendee));
         when(attendeeRepository.findByEmail(updateRequestWithPassword.email())).thenReturn(Optional.empty());
@@ -398,12 +397,17 @@ public class AttendeeServiceTest {
         savedAttendeeAfterUpdate.setId(attendeeId);
         savedAttendeeAfterUpdate.setName(updateRequestWithPassword.name());
         savedAttendeeAfterUpdate.setEmail(updateRequestWithPassword.email());
-        savedAttendeeAfterUpdate.setPassword(newHashedPassword);
-        savedAttendeeAfterUpdate.setRole(existingAttendee.getRole());
+        savedAttendeeAfterUpdate.setPassword(updateRequestWithPassword.password());
+        savedAttendeeAfterUpdate.setRole(updateRequestWithPassword.role());
         savedAttendeeAfterUpdate.setWorkingStartTime(updateRequestWithPassword.workingStartTime());
-        savedAttendeeAfterUpdate.setWorkingEndTime(existingAttendee.getWorkingEndTime());
+        savedAttendeeAfterUpdate.setWorkingEndTime(updateRequestWithPassword.workingEndTime());
 
         when(attendeeRepository.save(attendeeCaptor.capture())).thenReturn(savedAttendeeAfterUpdate);
+
+        AttendeeDTO expectedResponse = new AttendeeDTO(
+                savedAttendeeAfterUpdate.getId(), savedAttendeeAfterUpdate.getName(), savedAttendeeAfterUpdate.getEmail()
+        );
+
         when(attendeeMapper.mapToAttendeeDTO(savedAttendeeAfterUpdate)).thenReturn(expectedResponse);
 
         AttendeeDTO result = attendeeService.updateAttendee(attendeeId, updateRequestWithPassword);
@@ -464,6 +468,57 @@ public class AttendeeServiceTest {
         verify(attendeeMapper).updateAttendeeFromDto(eq(updateRequestWithPassword), eq(existingAttendee));
         verify(attendeeRepository).save(capturedAttendee);
         verify(attendeeMapper).mapToAttendeeDTO(savedAttendeeAfterUpdate);
+    }
+
+
+    @Test
+    void updateAttendee_shouldSucceed_whenDuplicatesCheckReturnsOnlyTheAttendeeBeingUpdated() {
+        Long attendeeId = DEFAULT_ATTENDEE_ID;
+        UpdateAttendeeRequestDTO updateRequest = new UpdateAttendeeRequestDTO(
+                defaultUpdateRequest.name(),
+                null, // email is NOT updated
+                defaultUpdateRequest.password(),
+                defaultUpdateRequest.role(),
+                defaultUpdateRequest.workingStartTime(),
+                defaultUpdateRequest.workingEndTime()
+        );
+
+        Attendee existingAttendee = new Attendee();
+        existingAttendee.setId(attendeeId);
+        existingAttendee.setName(defaultAttendee.getName());
+        existingAttendee.setEmail(defaultAttendee.getEmail());
+        existingAttendee.setPassword(DEFAULT_HASHED_PASSWORD);
+
+        when(attendeeRepository.findById(attendeeId)).thenReturn(Optional.of(existingAttendee));
+        // Duplicates check returns the attendee being updated
+        when(attendeeRepository.findByEmail(existingAttendee.getEmail())).thenReturn(Optional.of(existingAttendee));
+
+        doNothing().when(attendeeMapper).updateAttendeeFromDto(updateRequest, existingAttendee);
+
+        // - Prepare what save() method will return
+        Attendee savedAttendeeAfterUpdate = new Attendee();
+        savedAttendeeAfterUpdate.setId(attendeeId);
+        savedAttendeeAfterUpdate.setName(updateRequest.name());
+        savedAttendeeAfterUpdate.setEmail(existingAttendee.getEmail());
+        savedAttendeeAfterUpdate.setPassword(updateRequest.password());
+        savedAttendeeAfterUpdate.setRole(updateRequest.role());
+        savedAttendeeAfterUpdate.setWorkingStartTime(updateRequest.workingStartTime());
+        savedAttendeeAfterUpdate.setWorkingEndTime(updateRequest.workingEndTime());
+
+        when(attendeeRepository.save(any(Attendee.class))).thenReturn(savedAttendeeAfterUpdate);
+
+        AttendeeDTO expectedResponse = new AttendeeDTO(
+                savedAttendeeAfterUpdate.getId(), savedAttendeeAfterUpdate.getName(), savedAttendeeAfterUpdate.getEmail()
+        );
+
+        when(attendeeMapper.mapToAttendeeDTO(savedAttendeeAfterUpdate)).thenReturn(expectedResponse);
+
+        assertDoesNotThrow(() -> {
+            attendeeService.updateAttendee(attendeeId, updateRequest);
+        }, "Update should succeed when duplicates check only finds the attendee being updated itself.");
+
+        // - Verify
+        verify(attendeeRepository).findByEmail(existingAttendee.getEmail());
     }
 
 
