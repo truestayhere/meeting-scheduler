@@ -7,7 +7,7 @@ import com.truestayhere.meeting_scheduler.dto.request.UpdateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.AttendeeDTO;
 import com.truestayhere.meeting_scheduler.dto.response.AvailableSlotDTO;
 import com.truestayhere.meeting_scheduler.service.AttendeeService;
-import com.truestayhere.meeting_scheduler.service.MeetingService;
+import com.truestayhere.meeting_scheduler.service.AvailabilityService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -23,7 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AttendeeController {
     private final AttendeeService attendeeService;
-    private final MeetingService meetingService;
+    private final AvailabilityService availabilityService;
 
     // GET /api/attendees - Get all attendees
     @GetMapping
@@ -68,7 +68,7 @@ public class AttendeeController {
     public ResponseEntity<List<AvailableSlotDTO>> getAttendeeAvailability(
             @PathVariable Long id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        List<AvailableSlotDTO> availableSlots = meetingService.getAvailableTimeForAttendee(id, date);
+        List<AvailableSlotDTO> availableSlots = availabilityService.getAvailableTimeForAttendee(id, date);
         return ResponseEntity.ok(availableSlots);
     }
 
@@ -77,7 +77,7 @@ public class AttendeeController {
     @PostMapping("/common-availability")
     public ResponseEntity<List<AvailableSlotDTO>> findCommonAttendeeAvailability(
             @Valid @RequestBody CommonAvailabilityRequestDTO request) {
-        List<AvailableSlotDTO> commonSlots = meetingService.getCommonAttendeeAvailability(request);
+        List<AvailableSlotDTO> commonSlots = availabilityService.getCommonAttendeeAvailability(request);
         return ResponseEntity.ok(commonSlots); // 200 OK
     }
 }

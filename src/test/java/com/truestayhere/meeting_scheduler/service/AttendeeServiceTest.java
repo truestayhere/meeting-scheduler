@@ -2,13 +2,10 @@ package com.truestayhere.meeting_scheduler.service;
 
 import com.truestayhere.meeting_scheduler.dto.request.CreateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.request.UpdateAttendeeRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.request.UpdateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.AttendeeDTO;
-import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
 import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
 import com.truestayhere.meeting_scheduler.mapper.AttendeeMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
-import com.truestayhere.meeting_scheduler.model.Location;
 import com.truestayhere.meeting_scheduler.model.Meeting;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import com.truestayhere.meeting_scheduler.repository.MeetingRepository;
@@ -34,6 +31,11 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class AttendeeServiceTest {
 
+    private final Long DEFAULT_ATTENDEE_ID = 1L;
+    private final String DEFAULT_ATTENDEE_NAME = "Attendee Name";
+    private final String DEFAULT_ATTENDEE_EMAIL = "attendeename@test.com";
+    private final String DEFAULT_RAW_PASSWORD = "password123";
+    private final String DEFAULT_HASHED_PASSWORD = "hashedPasswordValue";
     @Mock
     private AttendeeRepository attendeeRepository;
     @Mock
@@ -42,16 +44,8 @@ public class AttendeeServiceTest {
     private AttendeeMapper attendeeMapper;
     @Mock
     private PasswordEncoder passwordEncoder;
-
     @InjectMocks
     private AttendeeService attendeeService;
-
-    private final Long DEFAULT_ATTENDEE_ID = 1L;
-    private final String DEFAULT_ATTENDEE_NAME = "Attendee Name";
-    private final String DEFAULT_ATTENDEE_EMAIL = "attendeename@test.com";
-    private final String DEFAULT_RAW_PASSWORD = "password123";
-    private final String DEFAULT_HASHED_PASSWORD = "hashedPasswordValue";
-
     private CreateAttendeeRequestDTO defaultCreateRequest;
     private UpdateAttendeeRequestDTO defaultUpdateRequest;
     private Attendee defaultAttendee;

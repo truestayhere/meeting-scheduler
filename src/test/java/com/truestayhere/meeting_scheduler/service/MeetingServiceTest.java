@@ -38,6 +38,12 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class MeetingServiceTest {
 
+    private final Long DEFAULT_MEETING_ID = 100L;
+    private final String DEFAULT_MEETING_TITLE = "Meeting";
+    private final LocalDateTime DEFAULT_MEETING_START = LocalDateTime.of(Year.now().getValue() + 1, 8, 4, 13, 0); // Make sure tests does not conflict with meeting time restrictions
+    private final LocalDateTime DEFAULT_MEETING_END = LocalDateTime.of(Year.now().getValue() + 1, 8, 4, 14, 0);
+    @InjectMocks
+    MeetingService meetingService;
     @Mock
     private LocationRepository locationRepository;
     @Mock
@@ -46,24 +52,15 @@ public class MeetingServiceTest {
     private MeetingRepository meetingRepository;
     @Mock
     private MeetingMapper meetingMapper;
-
-    @InjectMocks
-    MeetingService meetingService;
-
-    private final Long DEFAULT_MEETING_ID = 100L;
-    private final String DEFAULT_MEETING_TITLE = "Meeting";
-    private final LocalDateTime DEFAULT_MEETING_START = LocalDateTime.of(Year.now().getValue() + 1, 8, 4, 13, 0); // Make sure tests does not conflict with meeting time restrictions
-    private final LocalDateTime DEFAULT_MEETING_END = LocalDateTime.of(Year.now().getValue() + 1, 8, 4, 14, 0);
-
     private CreateMeetingRequestDTO defaultCreateRequest;
     private UpdateMeetingRequestDTO defaultUpdateRequest;
     private Location mockLocation1, mockLocation2;
     private LocationDTO mockLocationDTO1, mockLocationDTO2;
+    private Attendee mockAttendee1, mockAttendee2;
+    private AttendeeDTO mockAttendeeDTO1, mockAttendeeDTO2;
     private Set<Attendee> mockAttendees;
     private Set<Long> mockAttendeeIds;
     private Set<AttendeeDTO> mockAttendeeDTOs;
-    private Attendee mockAttendee1, mockAttendee2;
-    private AttendeeDTO mockAttendeeDTO1, mockAttendeeDTO2;
     private Meeting defaultMeeting;
     private Meeting defaultSavedMeeting;
     private MeetingDTO defaultMeetingDTO;

@@ -46,7 +46,7 @@ public class TokenService {
         JwsHeader header = JwsHeader.with(JWSAlgorithm.HS256::getName)
                 .keyId("jwt-signing-key-1")
                 .build();
-        log.debug("Explicit JWS Header created: {}", header.toString());
+        log.debug("Explicit JWS Header created: {}", header);
 
         JwtEncoderParameters parameters = JwtEncoderParameters.from(header, claims);
         log.debug("JwtEncoderParameters created with explicit header.");

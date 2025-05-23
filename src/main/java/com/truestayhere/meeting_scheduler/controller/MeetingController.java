@@ -6,6 +6,7 @@ import com.truestayhere.meeting_scheduler.dto.request.MeetingSuggestionRequestDT
 import com.truestayhere.meeting_scheduler.dto.request.UpdateMeetingRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.LocationTimeSlotDTO;
 import com.truestayhere.meeting_scheduler.dto.response.MeetingDTO;
+import com.truestayhere.meeting_scheduler.service.AvailabilityService;
 import com.truestayhere.meeting_scheduler.service.MeetingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MeetingController {
     private final MeetingService meetingService;
+    private final AvailabilityService availabilityService;
 
     // GET /api/meetings - Get all meetings
     @GetMapping
@@ -44,7 +46,7 @@ public class MeetingController {
             @PathVariable Long attendeeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
-        List<MeetingDTO> meetings = meetingService.getMeetingsForAttendeeInRange(attendeeId, start, end);
+        List<MeetingDTO> meetings = availabilityService.getMeetingsForAttendeeInRange(attendeeId, start, end);
         return ResponseEntity.ok(meetings); // 200 OK
     }
 
@@ -54,7 +56,7 @@ public class MeetingController {
             @PathVariable Long locationId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
-        List<MeetingDTO> meetings = meetingService.getMeetingsForLocationInRange(locationId, start, end);
+        List<MeetingDTO> meetings = availabilityService.getMeetingsForLocationInRange(locationId, start, end);
         return ResponseEntity.ok(meetings);
     }
 
@@ -84,7 +86,7 @@ public class MeetingController {
     @PostMapping("/suggestions")
     public ResponseEntity<List<LocationTimeSlotDTO>> findMeetingSuggestions(
             @Valid @RequestBody MeetingSuggestionRequestDTO request) {
-        List<LocationTimeSlotDTO> meetingSuggestions = meetingService.findMeetingSuggestions(request);
+        List<LocationTimeSlotDTO> meetingSuggestions = availabilityService.findMeetingSuggestions(request);
         return ResponseEntity.ok(meetingSuggestions); // 200 OK
     }
 

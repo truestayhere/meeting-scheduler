@@ -30,20 +30,17 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class) // Enable Mockito
 public class LocationServiceTest {
 
+    private final Long DEFAULT_LOCATION_ID = 1L;
+    private final String DEFAULT_LOCATION_NAME = "Room 1";
+    private final Integer DEFAULT_LOCATION_CAPACITY = 10;
     @Mock
     private LocationRepository locationRepository;
     @Mock
     private MeetingRepository meetingRepository;
     @Mock
     private LocationMapper locationMapper;
-
     @InjectMocks
     private LocationService locationService;
-
-    private final Long DEFAULT_LOCATION_ID = 1L;
-    private final String DEFAULT_LOCATION_NAME = "Room 1";
-    private final Integer DEFAULT_LOCATION_CAPACITY = 10;
-
     private CreateLocationRequestDTO defaultCreateRequest;
     private UpdateLocationRequestDTO defaultUpdateRequest;
     private Location defaultLocation;
@@ -501,7 +498,7 @@ public class LocationServiceTest {
         verify(locationRepository).findByName(existingLocation.getName());
     }
 
-        @Test
+    @Test
     void updateLocation_shouldThrowEntityNotFoundException_whenLocationDoesNotExist() {
         // Arrange
         Long nonExistentLocationId = DEFAULT_LOCATION_ID;

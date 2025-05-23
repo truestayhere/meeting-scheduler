@@ -7,8 +7,8 @@ import com.truestayhere.meeting_scheduler.dto.request.UpdateLocationRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.AvailableSlotDTO;
 import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
 import com.truestayhere.meeting_scheduler.dto.response.LocationTimeSlotDTO;
+import com.truestayhere.meeting_scheduler.service.AvailabilityService;
 import com.truestayhere.meeting_scheduler.service.LocationService;
-import com.truestayhere.meeting_scheduler.service.MeetingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -24,7 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LocationController {
     private final LocationService locationService;
-    private final MeetingService meetingService;
+    private final AvailabilityService availabilityService;
 
     // GET /api/locations - Get all locations
     @GetMapping
@@ -66,7 +66,7 @@ public class LocationController {
     public ResponseEntity<List<AvailableSlotDTO>> getLocationAvailability(
             @PathVariable Long id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        List<AvailableSlotDTO> availableSlots = meetingService.getAvailableTimeForLocation(id, date);
+        List<AvailableSlotDTO> availableSlots = availabilityService.getAvailableTimeForLocation(id, date);
         return ResponseEntity.ok(availableSlots);
     }
 
@@ -75,7 +75,7 @@ public class LocationController {
     @PostMapping("/availability-by-duration")
     public ResponseEntity<List<LocationTimeSlotDTO>> findLocationAvailabilityByDuration(
             @Valid @RequestBody LocationAvailabilityRequestDTO requestDTO) {
-        List<LocationTimeSlotDTO> locationSlots = meetingService.getAvailabilityForLocationsByDuration(requestDTO);
+        List<LocationTimeSlotDTO> locationSlots = availabilityService.getAvailabilityForLocationsByDuration(requestDTO);
         return ResponseEntity.ok(locationSlots); // 200 OK
     }
 
