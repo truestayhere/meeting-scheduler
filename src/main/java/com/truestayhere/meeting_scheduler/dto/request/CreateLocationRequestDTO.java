@@ -16,7 +16,7 @@ public record CreateLocationRequestDTO(
         String name,
 
         @NotNull(message = "Location capacity cannot be empty.")
-        @Min(value = 1, message = "Capacity must be at least 1 if provided.")
+        @Min(value = 1, message = "Location capacity must be at least 1.")
         Integer capacity,
 
         LocalTime workingStartTime,

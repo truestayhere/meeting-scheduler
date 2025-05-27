@@ -10,11 +10,9 @@ import java.time.LocalTime;
 @ValidWorkingHours
 public record UpdateAttendeeRequestDTO(
 
-        @NotBlank(message = "Attendee name cannot be blank.")
         @Size(max = 100, message = "Attendee name cannot exceed 100 characters.")
         String name,
 
-        @NotBlank(message = "Attendee email cannot be blank.")
         @Email(message = "Invalid email format.")
         @Size(max = 100, message = "Email cannot exceed 100 characters.")
         String email,
