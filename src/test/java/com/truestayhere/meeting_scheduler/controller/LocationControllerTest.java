@@ -112,19 +112,9 @@ public class LocationControllerTest {
     void createLocation_whenValidInput_shouldReturn201CreatedAndLocationResponse() throws Exception {
         when(locationService.createLocation(any(CreateLocationRequestDTO.class))).thenReturn(locationDTO1);
 
-        ResultActions resultActions = mockMvc.perform(post("/api/locations")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(createRequest)));
+        ResultActions resultActions = performCreateLocation(createRequest);
 
-        resultActions
-                .andExpect(status().isCreated())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id",
-                        is(locationDTO1.id().intValue())))
-                .andExpect(jsonPath("$.name",
-                        is(locationDTO1.name())))
-                .andExpect(jsonPath("$.capacity",
-                        is(locationDTO1.capacity())));
+        assertCreatedLocationResponse(resultActions, locationDTO1);
 
         verify(locationService).createLocation(any(CreateLocationRequestDTO.class));
     }
@@ -183,17 +173,9 @@ public class LocationControllerTest {
             String expectedErrorMessage
     ) throws Exception {
 
-        ResultActions resultActions = mockMvc.perform(post("/api/locations")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(invalidRequest)));
+        ResultActions resultActions = performCreateLocation(invalidRequest);
 
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status",
-                        is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", is("Validation Failed")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorTarget + ": " + expectedErrorMessage)))
-                .andExpect(jsonPath("$.messages.length()", is(1)));
+        assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
 
         verify(locationService, never()).createLocation(any());
     }
@@ -214,12 +196,7 @@ public class LocationControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(malformedJsonRequest));
 
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", containsString("Malformed Request Body")))
-                .andExpect(jsonPath("$.messages[0]", containsString("Request body is malformed or contains invalid data/format.")));
-
+        assertMalformedRequestError(resultActions);
 
         verify(locationService, never()).createLocation(any());
     }
@@ -231,18 +208,9 @@ public class LocationControllerTest {
         when(locationService.createLocation(any(CreateLocationRequestDTO.class)))
                 .thenThrow(new DataIntegrityViolationException(expectedErrorMessage));
 
-        // Act
-        ResultActions resultActions = mockMvc.perform(post("/api/locations")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateRequest)));
+        ResultActions resultActions = performCreateLocation(createRequest);
 
-        // Assert
-        resultActions
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status", is(HttpStatus.CONFLICT.value())))
-                .andExpect(jsonPath("$.error", is("Data Conflict/Integrity Violation")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorMessage)));
-
+        assertConflictError(resultActions, expectedErrorMessage);
 
         verify(locationService).createLocation(any(CreateLocationRequestDTO.class));
     }
@@ -258,17 +226,9 @@ public class LocationControllerTest {
 
         when(locationService.getAllLocations()).thenReturn(expectedLocations);
 
-        ResultActions resultActions = mockMvc.perform(get("/api/locations")
-                .accept(MediaType.APPLICATION_JSON));
+        ResultActions resultActions = performGetAllLocations();
 
-        resultActions
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()", is(expectedLocations.size())))
-                .andExpect(jsonPath("$[0].id", is(locationDTO1.id().intValue())))
-                .andExpect(jsonPath("$[0].name", is(locationDTO1.name())))
-                .andExpect(jsonPath("$[1].id", is(locationDTO2.id().intValue())))
-                .andExpect(jsonPath("$[1].name", is(locationDTO2.name())));
+        assertLocationListResponse(resultActions, expectedLocations);
 
         verify(locationService).getAllLocations();
     }
@@ -278,13 +238,9 @@ public class LocationControllerTest {
     void getAllLocations_whenNoLocations_shouldReturn200OkAndEmptyList() throws Exception {
         when(locationService.getAllLocations()).thenReturn(List.of());
 
-        ResultActions resultActions = mockMvc.perform(get("/api/locations")
-                .accept(MediaType.APPLICATION_JSON));
+        ResultActions resultActions = performGetAllLocations();
 
-        resultActions
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()", is(0)));
+        assertLocationListResponse(resultActions, List.of());
 
         verify(locationService).getAllLocations();
     }
@@ -295,15 +251,9 @@ public class LocationControllerTest {
         Long locationId = locationDTO1.id();
         when(locationService.getLocationById(locationId)).thenReturn(locationDTO1);
 
-        ResultActions resultActions = mockMvc.perform(get("/api/locations/{id}", locationId)
-                .accept(MediaType.APPLICATION_JSON));
+        ResultActions resultActions = performGetLocation(locationId);
 
-        resultActions
-                .andExpect(status().isOk()) // HTTP 200
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id", is(locationDTO1.id().intValue())))
-                .andExpect(jsonPath("$.name", is(locationDTO1.name())))
-                .andExpect(jsonPath("$.capacity", is(locationDTO1.capacity())));
+        assertLocationResponse(resultActions, locationDTO1);
 
         verify(locationService).getLocationById(locationId);
     }
@@ -315,15 +265,9 @@ public class LocationControllerTest {
         String expectedErrorMessage = "Location not found with id: " + nonExistentLocationId;
         when(locationService.getLocationById(nonExistentLocationId)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
-        ResultActions resultActions = mockMvc.perform(get("/api/locations/{id}", nonExistentLocationId)
-                .accept(MediaType.APPLICATION_JSON));
+        ResultActions resultActions = performGetLocation(nonExistentLocationId);
 
-        resultActions
-                .andExpect(status().isNotFound()) // HTTP 404
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(HttpStatus.NOT_FOUND.value())))
-                .andExpect(jsonPath("$.error", is("Resource Not Found")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorMessage)));
+        assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(locationService).getLocationById(nonExistentLocationId);
     }
@@ -337,12 +281,7 @@ public class LocationControllerTest {
         ResultActions resultActions = mockMvc.perform(get("/api/locations/{id}", invalidId)
                 .accept(MediaType.APPLICATION_JSON));
 
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", is("Invalid Parameter Type/Format")))
-                .andExpect(jsonPath("$.messages[0]", containsString(expectedErrorMessage)));
+        assertParameterTypeError(resultActions, expectedErrorMessage);
     }
 
     // === END GET ===
@@ -363,16 +302,9 @@ public class LocationControllerTest {
         when(locationService.updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class)))
                 .thenReturn(updatedLocationDTO);
 
-        ResultActions resultActions = mockMvc.perform(put("/api/locations/{id}", locationIdToUpdate)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateRequest)));
+        ResultActions resultActions = performUpdateLocation(locationIdToUpdate, updateRequest);
 
-        resultActions
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id", is(locationIdToUpdate.intValue())))
-                .andExpect(jsonPath("$.name", is(updateRequest.name())))
-                .andExpect(jsonPath("$.capacity", is(updateRequest.capacity())));
+        assertLocationResponse(resultActions, updatedLocationDTO);
 
         verify(locationService).updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class));
     }
@@ -419,9 +351,7 @@ public class LocationControllerTest {
     ) throws Exception {
         Long locationIdToUpdate = locationDTO1.id();
 
-        ResultActions resultActions = mockMvc.perform(put("/api/locations/{id}", locationIdToUpdate)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(invalidRequest)));
+        ResultActions resultActions = performUpdateLocation(locationIdToUpdate, invalidRequest);
 
         resultActions
                 .andExpect(status().isBadRequest())
@@ -452,16 +382,9 @@ public class LocationControllerTest {
 
         when(locationService.updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class))).thenReturn(expectedResponse);
 
-        ResultActions resultActions = mockMvc.perform(put("/api/locations/{id}", locationIdToUpdate)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestWithNameNull)));
+        ResultActions resultActions = performUpdateLocation(locationIdToUpdate, requestWithNameNull);
 
-        resultActions
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id", is(locationIdToUpdate.intValue())))
-                .andExpect(jsonPath("$.name", is(existingName)))
-                .andExpect(jsonPath("$.capacity", is(requestWithNameNull.capacity())));
+        assertLocationResponse(resultActions, expectedResponse);
 
         ArgumentCaptor<UpdateLocationRequestDTO> dtoCaptor = ArgumentCaptor.forClass(UpdateLocationRequestDTO.class);
         verify(locationService).updateLocation(eq(locationIdToUpdate), dtoCaptor.capture());
@@ -489,16 +412,9 @@ public class LocationControllerTest {
 
         when(locationService.updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class))).thenReturn(expectedResponse);
 
-        ResultActions resultActions = mockMvc.perform(put("/api/locations/{id}", locationIdToUpdate)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestWithCapacityNull)));
+        ResultActions resultActions = performUpdateLocation(locationIdToUpdate, requestWithCapacityNull);
 
-        resultActions
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id", is(locationIdToUpdate.intValue())))
-                .andExpect(jsonPath("$.name", is(requestWithCapacityNull.name())))
-                .andExpect(jsonPath("$.capacity", is(existingCapacity)));
+        assertLocationResponse(resultActions, expectedResponse);
 
         ArgumentCaptor<UpdateLocationRequestDTO> dtoCaptor = ArgumentCaptor.forClass(UpdateLocationRequestDTO.class);
         verify(locationService).updateLocation(eq(locationIdToUpdate), dtoCaptor.capture());
@@ -512,16 +428,9 @@ public class LocationControllerTest {
         String expectedErrorMessage = "Location not found with id: " + nonExistentLocationId;
         when(locationService.updateLocation(eq(nonExistentLocationId), any(UpdateLocationRequestDTO.class))).thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
-        ResultActions resultActions = mockMvc.perform(put("/api/locations/{id}", nonExistentLocationId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateRequest)));
+        ResultActions resultActions = performUpdateLocation(nonExistentLocationId, updateRequest);
 
-        resultActions
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(HttpStatus.NOT_FOUND.value())))
-                .andExpect(jsonPath("$.error", is("Resource Not Found")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorMessage)));
+        assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(locationService).updateLocation(eq(nonExistentLocationId), any(UpdateLocationRequestDTO.class));
     }
@@ -543,11 +452,7 @@ public class LocationControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(malformedJsonRequest));
 
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", containsString("Malformed Request Body")))
-                .andExpect(jsonPath("$.messages[0]", containsString("Request body is malformed or contains invalid data/format.")));
+        assertMalformedRequestError(resultActions);
 
         verify(locationService, never()).createLocation(any());
     }
@@ -562,12 +467,7 @@ public class LocationControllerTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(objectMapper.writeValueAsString(updateRequest)));
 
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", is("Invalid Parameter Type/Format")))
-                .andExpect(jsonPath("$.messages[0]", containsString(expectedErrorMessage)));
+        assertParameterTypeError(resultActions, expectedErrorMessage);
     }
 
     // === END UPDATE ===
@@ -597,12 +497,7 @@ public class LocationControllerTest {
 
         ResultActions resultActions = mockMvc.perform(delete("/api/locations/{id}", nonExistentLocationId));
 
-        resultActions
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(HttpStatus.NOT_FOUND.value())))
-                .andExpect(jsonPath("$.error", is("Resource Not Found")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorMessage)));
+        assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(locationService).deleteLocation(nonExistentLocationId);
     }
@@ -639,12 +534,7 @@ public class LocationControllerTest {
 
         ResultActions resultActions = mockMvc.perform(delete("/api/locations/{id}", invalidId));
 
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", is("Invalid Parameter Type/Format")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorMessage)));
+        assertParameterTypeError(resultActions, expectedErrorMessage);
 
         verify(locationService, never()).deleteLocation(anyLong());
     }
@@ -668,9 +558,7 @@ public class LocationControllerTest {
 
         when(availabilityService.getAvailableTimeForLocation(locationId, date)).thenReturn(expectedSlots);
 
-        ResultActions resultActions = mockMvc.perform(get("/api/locations/{id}/availability", locationId)
-                .param("date", date.toString())
-                .accept(MediaType.APPLICATION_JSON));
+        ResultActions resultActions = performGetAvailability(locationId, date);
 
         resultActions
                 .andExpect(status().isOk())
@@ -694,15 +582,9 @@ public class LocationControllerTest {
         when(availabilityService.getAvailableTimeForLocation(nonExistentLocationId, date))
                 .thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
-        ResultActions resultActions = mockMvc.perform(get("/api/locations/{id}/availability", nonExistentLocationId)
-                .param("date", date.toString())
-                .accept(MediaType.APPLICATION_JSON));
+        ResultActions resultActions = performGetAvailability(nonExistentLocationId, date);
 
-        resultActions
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status", is(HttpStatus.NOT_FOUND.value())))
-                .andExpect(jsonPath("$.error", is("Resource Not Found")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorMessage)));
+        assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(availabilityService).getAvailableTimeForLocation(nonExistentLocationId, date);
     }
@@ -736,11 +618,7 @@ public class LocationControllerTest {
                 .param("date", invalidDateStr)
                 .accept(MediaType.APPLICATION_JSON));
 
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", is("Invalid Parameter Type/Format")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorMessage)));
+        assertParameterTypeError(resultActions, expectedErrorMessage);
 
         verify(availabilityService, never()).getAvailableTimeForLocation(anyLong(), any(LocalDate.class));
     }
@@ -772,10 +650,7 @@ public class LocationControllerTest {
         when(availabilityService.getAvailabilityForLocationsByDuration(requestDTO))
                 .thenReturn(expectedResults);
 
-        ResultActions resultActions = mockMvc.perform(post("/api/locations/availability-by-duration")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDTO))
-                .accept(MediaType.APPLICATION_JSON));
+        ResultActions resultActions = performAvailabilityByDuration(requestDTO);
 
         resultActions
                 .andExpect(status().isOk())
@@ -807,10 +682,7 @@ public class LocationControllerTest {
         when(availabilityService.getAvailabilityForLocationsByDuration(requestDTOWithNullCapacity))
                 .thenReturn(expectedResults);
 
-        ResultActions resultActions = mockMvc.perform(post("/api/locations/availability-by-duration")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestDTOWithNullCapacity))
-                .accept(MediaType.APPLICATION_JSON));
+        ResultActions resultActions = performAvailabilityByDuration(requestDTOWithNullCapacity);
 
         resultActions
                 .andExpect(status().isOk());
@@ -885,18 +757,9 @@ public class LocationControllerTest {
             String expectedErrorMessage
     ) throws Exception {
 
-        ResultActions resultActions = mockMvc.perform(post("/api/locations/availability-by-duration")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(invalidRequest))
-                .accept(MediaType.APPLICATION_JSON));
+        ResultActions resultActions = performAvailabilityByDuration(invalidRequest);
 
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", is("Validation Failed")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorTarget + ": " + expectedErrorMessage)))
-                .andExpect(jsonPath("$.messages.length()", is(1)));
+        assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
 
         verify(availabilityService, never()).getAvailabilityForLocationsByDuration(any(LocationAvailabilityRequestDTO.class));
     }
@@ -911,21 +774,157 @@ public class LocationControllerTest {
                     "minimumCapacity": 5
                 }
                 """;
-        String expectedErrorMessage = "Request body is malformed or contains invalid data/format.";
 
         ResultActions resultActions = mockMvc.perform(post("/api/locations/availability-by-duration")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(malformedJsonRequest)
                 .accept(MediaType.APPLICATION_JSON));
 
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", is("Malformed Request Body")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorMessage)));
+        assertMalformedRequestError(resultActions);
 
         verify(availabilityService, never()).getAvailabilityForLocationsByDuration(any());
     }
 
     // === END AVAILABILITY ===
+
+    // === HELPER METHODS ===
+
+    // --- BUILD REQUEST ---
+
+    // POST requests
+    private ResultActions performCreateLocation(CreateLocationRequestDTO request) throws Exception {
+        return mockMvc.perform(post("/api/locations")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+    }
+
+    // PUT requests
+    private ResultActions performUpdateLocation(Long id, UpdateLocationRequestDTO request) throws Exception {
+        return mockMvc.perform(put("/api/locations/{id}", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+    }
+
+    // GET All requests
+    private ResultActions performGetAllLocations() throws Exception {
+        return mockMvc.perform(get("/api/locations")
+                .accept(MediaType.APPLICATION_JSON));
+    }
+
+    // GET by ID requests
+    private ResultActions performGetLocation(Long id) throws Exception {
+        return mockMvc.perform(get("/api/locations/{id}", id)
+                .accept(MediaType.APPLICATION_JSON));
+    }
+
+    // GET Availability by ID requests
+    private ResultActions performGetAvailability(Long id, LocalDate date) throws Exception {
+        return mockMvc.perform(get("/api/locations/{id}/availability", id)
+                .param("date", date.toString())
+                .accept(MediaType.APPLICATION_JSON));
+    }
+
+    // Availability by duration requests
+    private ResultActions performAvailabilityByDuration(LocationAvailabilityRequestDTO request) throws Exception {
+        return mockMvc.perform(post("/api/locations/availability-by-duration")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .accept(MediaType.APPLICATION_JSON));
+    }
+
+    // --- END BUILD REQUEST ---
+
+    // --- ASSERT SUCCESSFUL RESPONSE ---
+
+    // For successful location responses (200)
+    private void assertLocationResponse(ResultActions resultActions, LocationDTO expected) throws Exception {
+        resultActions
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id", is(expected.id().intValue())))
+                .andExpect(jsonPath("$.name", is(expected.name())))
+                .andExpect(jsonPath("$.capacity", is(expected.capacity())));
+    }
+
+    // For created responses (201)
+    private void assertCreatedLocationResponse(ResultActions resultActions, LocationDTO expected) throws Exception {
+        resultActions
+                .andExpect(status().isCreated())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id", is(expected.id().intValue())))
+                .andExpect(jsonPath("$.name", is(expected.name())))
+                .andExpect(jsonPath("$.capacity", is(expected.capacity())));
+    }
+
+    // For location lists (200)
+    private void assertLocationListResponse(ResultActions resultActions, List<LocationDTO> expected) throws Exception {
+        resultActions
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()", is(expected.size())));
+
+        for (int i = 0; i < expected.size(); i++) {
+            LocationDTO location = expected.get(i);
+            resultActions
+                    .andExpect(jsonPath("$[" + i + "].id", is(location.id().intValue())))
+                    .andExpect(jsonPath("$[" + i + "].name", is(location.name())))
+                    .andExpect(jsonPath("$[" + i + "].capacity", is(location.capacity())));
+        }
+    }
+
+    // --- END ASSERT SUCCESSFUL RESPONSE ---
+
+    // --- ASSERT ERROR RESPONSE ---
+
+    // Generic error response checker
+    private void assertErrorResponse(ResultActions resultActions, HttpStatus expectedStatus,
+                                     String expectedError, String expectedMessage) throws Exception {
+        resultActions
+                .andExpect(status().is(expectedStatus.value()))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status", is(expectedStatus.value())))
+                .andExpect(jsonPath("$.error", is(expectedError)))
+                .andExpect(jsonPath("$.messages[0]", is(expectedMessage)));
+    }
+
+    // Validation error (400)
+    private void assertValidationError(ResultActions resultActions, String expectedTarget,
+                                       String expectedMessage) throws Exception {
+        assertErrorResponse(resultActions, HttpStatus.BAD_REQUEST, "Validation Failed",
+                expectedTarget + ": " + expectedMessage);
+        resultActions.andExpect(jsonPath("$.messages.length()", is(1)));
+    }
+
+    // Not found errors (404)
+    private void assertNotFoundError(ResultActions resultActions, String expectedMessage) throws Exception {
+        assertErrorResponse(resultActions, HttpStatus.NOT_FOUND, "Resource Not Found", expectedMessage);
+    }
+
+    // Conflict errors (409)
+    private void assertConflictError(ResultActions resultActions, String expectedMessage) throws Exception {
+        assertErrorResponse(resultActions, HttpStatus.CONFLICT, "Data Conflict/Integrity Violation", expectedMessage);
+    }
+
+    // Parameter type errors
+    private void assertParameterTypeError(ResultActions resultActions, String expectedMessage) throws Exception {
+        resultActions
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+                .andExpect(jsonPath("$.error", is("Invalid Parameter Type/Format")))
+                .andExpect(jsonPath("$.messages[0]", containsString(expectedMessage)));
+    }
+
+    // Malformed request body errors
+    private void assertMalformedRequestError(ResultActions resultActions) throws Exception {
+        resultActions
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+                .andExpect(jsonPath("$.error", containsString("Malformed Request Body")))
+                .andExpect(jsonPath("$.messages[0]", containsString("Request body is malformed or contains invalid data/format.")));
+    }
+
+    // --- END ASSERT ERROR RESPONSE ---
+
+    // === END HELPER METHODS
 }
