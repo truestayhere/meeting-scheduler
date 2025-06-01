@@ -12,7 +12,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidWorkingHours {
 
-    String message() default "Working start time and end time cannot be the same";
+    String message() default "Working start time and end time cannot be the same.";
 
     Class<?>[] groups() default {};
 

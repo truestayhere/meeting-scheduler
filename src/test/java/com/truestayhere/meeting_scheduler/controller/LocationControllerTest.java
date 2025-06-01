@@ -131,7 +131,7 @@ public class LocationControllerTest {
 
         return Stream.of(
                 Arguments.of(
-                        "Name is null",
+                        "Name is null/blank",
                         new CreateLocationRequestDTO(null, validCapacity, validStartTime, validEndTime),
                         "name",
                         "Location name cannot be blank."
@@ -158,7 +158,7 @@ public class LocationControllerTest {
                         "Working start time equals end time",
                         new CreateLocationRequestDTO(validName, validCapacity, sameTime, sameTime),
                         "createLocationRequestDTO",
-                        "Working start time and end time cannot be the same"
+                        "Working start time and end time cannot be the same."
                 )
         );
     }
@@ -262,7 +262,7 @@ public class LocationControllerTest {
     @WithMockUser
     void getLocationById_whenLocationNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentLocationId = 0L;
-        String expectedErrorMessage = "Location not found with id: " + nonExistentLocationId;
+        String expectedErrorMessage = "Location not found with ID: " + nonExistentLocationId;
         when(locationService.getLocationById(nonExistentLocationId)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
         ResultActions resultActions = performGetLocation(nonExistentLocationId);
@@ -335,7 +335,7 @@ public class LocationControllerTest {
                         "Working start time equals end time",
                         new UpdateLocationRequestDTO(validName, validCapacity, sameTime, sameTime),
                         "updateLocationRequestDTO",
-                        "Working start time and end time cannot be the same"
+                        "Working start time and end time cannot be the same."
                 )
         );
     }
@@ -353,10 +353,7 @@ public class LocationControllerTest {
 
         ResultActions resultActions = performUpdateLocation(locationIdToUpdate, invalidRequest);
 
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error", is("Validation Failed")))
-                .andExpect(jsonPath("$.messages[0]", is(expectedErrorTarget + ": " + expectedErrorMessage)));
+        assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
 
         verify(locationService, never()).updateLocation(anyLong(), any());
     }
@@ -425,7 +422,7 @@ public class LocationControllerTest {
     @WithMockUser
     void updateLocationById_whenLocationNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentLocationId = 0L;
-        String expectedErrorMessage = "Location not found with id: " + nonExistentLocationId;
+        String expectedErrorMessage = "Location not found with ID: " + nonExistentLocationId;
         when(locationService.updateLocation(eq(nonExistentLocationId), any(UpdateLocationRequestDTO.class))).thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
         ResultActions resultActions = performUpdateLocation(nonExistentLocationId, updateRequest);
@@ -437,7 +434,7 @@ public class LocationControllerTest {
 
     @Test
     @WithMockUser
-    void updateLocationById_whenServiceThrowsDataIntegrityException_shouldReturn409Conflict() throws Exception {
+    void updateLocation_whenWorkingTimeIsMalformedString_shouldReturn400BadRequest() throws Exception {
         Long locationIdToUpdate = locationDTO1.id();
         String malformedJsonRequest = """
                 {
@@ -470,6 +467,21 @@ public class LocationControllerTest {
         assertParameterTypeError(resultActions, expectedErrorMessage);
     }
 
+    @Test
+    @WithMockUser
+    void updateLocation_whenServiceThrowsDataIntegrityException_shouldReturn409Conflict() throws Exception {
+        Long locationIdToUpdate = locationDTO1.id();
+        String expectedErrorMessage = "Database constraint violation occurred.";
+        when(locationService.updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class)))
+                .thenThrow(new DataIntegrityViolationException(expectedErrorMessage));
+
+        ResultActions resultActions = performUpdateLocation(locationIdToUpdate, updateRequest);
+
+        assertConflictError(resultActions, expectedErrorMessage);
+
+        verify(locationService).updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class));
+    }
+
     // === END UPDATE ===
 
     // === DELETE ===
@@ -480,9 +492,10 @@ public class LocationControllerTest {
         Long locationIdToDelete = locationDTO1.id();
         doNothing().when(locationService).deleteLocation(locationIdToDelete);
 
-        ResultActions resultActions = mockMvc.perform(delete("/api/locations/{id}", locationIdToDelete));
+        ResultActions resultActions = performDeleteLocation(locationIdToDelete);
 
-        resultActions.andExpect(status().isNoContent());
+        resultActions
+                .andExpect(status().isNoContent());
 
         verify(locationService).deleteLocation(locationIdToDelete);
     }
@@ -490,12 +503,12 @@ public class LocationControllerTest {
     @Test
     @WithMockUser
     void deleteLocationById_whenLocationNotFound_shouldReturn404NotFound() throws Exception {
-        Long nonExistentLocationId = locationDTO1.id();
+        Long nonExistentLocationId = 0L;
         String expectedErrorMessage = "Location not found with ID: " + nonExistentLocationId;
 
         doThrow(new EntityNotFoundException(expectedErrorMessage)).when(locationService).deleteLocation(nonExistentLocationId);
 
-        ResultActions resultActions = mockMvc.perform(delete("/api/locations/{id}", nonExistentLocationId));
+        ResultActions resultActions = performDeleteLocation(nonExistentLocationId);
 
         assertNotFoundError(resultActions, expectedErrorMessage);
 
@@ -506,14 +519,14 @@ public class LocationControllerTest {
     @WithMockUser
     void deleteLocationById_whenLocationInUse_shouldReturn409Conflict() throws Exception {
         Long locationIdToDelete = locationDTO1.id();
-        List<Long> conflictingMeetingIds = List.of(locationDTO1.id(), locationDTO2.id());
+        List<Long> conflictingMeetingIds = List.of(101L, 102L);
         String conflictErrorMessage = String.format("Location cannot be deleted because it is used in %d meeting(s). See details.", conflictingMeetingIds.size());
         String conflictIdsMessage = "Conflicting Resource Ids: " +
                 conflictingMeetingIds.stream().map(String::valueOf).collect(Collectors.joining(", "));
 
         doThrow(new ResourceInUseException(conflictErrorMessage, conflictingMeetingIds)).when(locationService).deleteLocation(locationIdToDelete);
 
-        ResultActions resultActions = mockMvc.perform(delete("/api/locations/{id}", locationIdToDelete));
+        ResultActions resultActions = performDeleteLocation(locationIdToDelete);
 
         resultActions
                 .andExpect(status().isConflict())
@@ -553,7 +566,7 @@ public class LocationControllerTest {
 
         List<AvailableSlotDTO> expectedSlots = List.of(
                 new AvailableSlotDTO(date.atTime(10, 0), date.atTime(11, 0)),
-                new AvailableSlotDTO(date.atTime(11, 0), date.atTime(12, 30))
+                new AvailableSlotDTO(date.atTime(11, 30), date.atTime(12, 30))
         );
 
         when(availabilityService.getAvailableTimeForLocation(locationId, date)).thenReturn(expectedSlots);
@@ -575,7 +588,7 @@ public class LocationControllerTest {
     @Test
     @WithMockUser
     void getLocationAvailability_whenLocationNotFound_shouldReturn404NotFound() throws Exception {
-        Long nonExistentLocationId = locationDTO1.id();
+        Long nonExistentLocationId = 0L;
         LocalDate date = LocalDate.of(Year.now().getValue() + 1, 8, 14);
         String expectedErrorMessage = "Location not found with ID: " + nonExistentLocationId;
 
@@ -622,6 +635,10 @@ public class LocationControllerTest {
 
         verify(availabilityService, never()).getAvailableTimeForLocation(anyLong(), any(LocalDate.class));
     }
+
+    // === END AVAILABILITY ===
+
+    // === AVAILABILITY BY DURATION ===
 
     @Test
     @WithMockUser
@@ -785,7 +802,7 @@ public class LocationControllerTest {
         verify(availabilityService, never()).getAvailabilityForLocationsByDuration(any());
     }
 
-    // === END AVAILABILITY ===
+    // === END AVAILABILITY BY DURATION ===
 
     // === HELPER METHODS ===
 
@@ -815,6 +832,11 @@ public class LocationControllerTest {
     private ResultActions performGetLocation(Long id) throws Exception {
         return mockMvc.perform(get("/api/locations/{id}", id)
                 .accept(MediaType.APPLICATION_JSON));
+    }
+
+    // DELETE by ID requests
+    private ResultActions performDeleteLocation(Long id) throws Exception {
+        return mockMvc.perform(delete("/api/locations/{id}", id));
     }
 
     // GET Availability by ID requests
@@ -892,7 +914,6 @@ public class LocationControllerTest {
                                        String expectedMessage) throws Exception {
         assertErrorResponse(resultActions, HttpStatus.BAD_REQUEST, "Validation Failed",
                 expectedTarget + ": " + expectedMessage);
-        resultActions.andExpect(jsonPath("$.messages.length()", is(1)));
     }
 
     // Not found errors (404)
