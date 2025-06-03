@@ -15,7 +15,7 @@ public @interface StartBeforeEnd { // @interface makes it and Annotation
     // message(), groups(), payload(): Standard elements required by Bean Validation specification.
 
     // Default error massage
-    String message() default "Start time must me before end time";
+    String message() default "Start time must me before end time.";
 
     // Groups allow subset validation
     Class<?>[] groups() default {};

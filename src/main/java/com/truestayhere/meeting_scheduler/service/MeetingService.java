@@ -201,6 +201,12 @@ public class MeetingService {
         existingMeeting.setLocation(location);
         existingMeeting.setAttendees(attendees);
 
+        // --- StartBeforeEnd Check (for partial updates)
+
+        if (existingMeeting.getStartTime().isAfter(existingMeeting.getEndTime())) {
+            throw new IllegalArgumentException("Start time must be before end time.");
+        }
+
         // --- Save the Meeting ---
 
         log.debug("Attempting to save updated meeting");

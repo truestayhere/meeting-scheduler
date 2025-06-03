@@ -12,6 +12,7 @@ import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
 import com.truestayhere.meeting_scheduler.dto.response.LocationTimeSlotDTO;
 import com.truestayhere.meeting_scheduler.exception.GlobalExceptionHandler;
 import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
+import com.truestayhere.meeting_scheduler.helper.LocationTestHelper;
 import com.truestayhere.meeting_scheduler.service.AvailabilityService;
 import com.truestayhere.meeting_scheduler.service.LocationService;
 import jakarta.persistence.EntityNotFoundException;
@@ -42,7 +43,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -71,6 +71,8 @@ public class LocationControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private LocationTestHelper locationTestHelper;
+
     private CreateLocationRequestDTO createRequest;
     private UpdateLocationRequestDTO updateRequest;
     private LocationDTO locationDTO1, locationDTO2;
@@ -78,6 +80,8 @@ public class LocationControllerTest {
 
     @BeforeEach
     void setUp() {
+        locationTestHelper = new LocationTestHelper(mockMvc, objectMapper);
+
         locationDTO1 = new LocationDTO(
                 1L,
                 "Room 1",
@@ -112,9 +116,9 @@ public class LocationControllerTest {
     void createLocation_whenValidInput_shouldReturn201CreatedAndLocationResponse() throws Exception {
         when(locationService.createLocation(any(CreateLocationRequestDTO.class))).thenReturn(locationDTO1);
 
-        ResultActions resultActions = performCreateLocation(createRequest);
+        ResultActions resultActions = locationTestHelper.performCreateLocation(createRequest);
 
-        assertCreatedLocationResponse(resultActions, locationDTO1);
+        locationTestHelper.assertCreatedLocationResponse(resultActions, locationDTO1);
 
         verify(locationService).createLocation(any(CreateLocationRequestDTO.class));
     }
@@ -173,9 +177,9 @@ public class LocationControllerTest {
             String expectedErrorMessage
     ) throws Exception {
 
-        ResultActions resultActions = performCreateLocation(invalidRequest);
+        ResultActions resultActions = locationTestHelper.performCreateLocation(invalidRequest);
 
-        assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
+        locationTestHelper.assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
 
         verify(locationService, never()).createLocation(any());
     }
@@ -196,7 +200,7 @@ public class LocationControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(malformedJsonRequest));
 
-        assertMalformedRequestError(resultActions);
+        locationTestHelper.assertMalformedRequestError(resultActions);
 
         verify(locationService, never()).createLocation(any());
     }
@@ -208,9 +212,9 @@ public class LocationControllerTest {
         when(locationService.createLocation(any(CreateLocationRequestDTO.class)))
                 .thenThrow(new DataIntegrityViolationException(expectedErrorMessage));
 
-        ResultActions resultActions = performCreateLocation(createRequest);
+        ResultActions resultActions = locationTestHelper.performCreateLocation(createRequest);
 
-        assertConflictError(resultActions, expectedErrorMessage);
+        locationTestHelper.assertConflictError(resultActions, expectedErrorMessage);
 
         verify(locationService).createLocation(any(CreateLocationRequestDTO.class));
     }
@@ -226,9 +230,9 @@ public class LocationControllerTest {
 
         when(locationService.getAllLocations()).thenReturn(expectedLocations);
 
-        ResultActions resultActions = performGetAllLocations();
+        ResultActions resultActions = locationTestHelper.performGetAllLocations();
 
-        assertLocationListResponse(resultActions, expectedLocations);
+        locationTestHelper.assertLocationListResponse(resultActions, expectedLocations);
 
         verify(locationService).getAllLocations();
     }
@@ -238,9 +242,9 @@ public class LocationControllerTest {
     void getAllLocations_whenNoLocations_shouldReturn200OkAndEmptyList() throws Exception {
         when(locationService.getAllLocations()).thenReturn(List.of());
 
-        ResultActions resultActions = performGetAllLocations();
+        ResultActions resultActions = locationTestHelper.performGetAllLocations();
 
-        assertLocationListResponse(resultActions, List.of());
+        locationTestHelper.assertLocationListResponse(resultActions, List.of());
 
         verify(locationService).getAllLocations();
     }
@@ -251,9 +255,9 @@ public class LocationControllerTest {
         Long locationId = locationDTO1.id();
         when(locationService.getLocationById(locationId)).thenReturn(locationDTO1);
 
-        ResultActions resultActions = performGetLocation(locationId);
+        ResultActions resultActions = locationTestHelper.performGetLocation(locationId);
 
-        assertLocationResponse(resultActions, locationDTO1);
+        locationTestHelper.assertLocationResponse(resultActions, locationDTO1);
 
         verify(locationService).getLocationById(locationId);
     }
@@ -265,9 +269,9 @@ public class LocationControllerTest {
         String expectedErrorMessage = "Location not found with ID: " + nonExistentLocationId;
         when(locationService.getLocationById(nonExistentLocationId)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
-        ResultActions resultActions = performGetLocation(nonExistentLocationId);
+        ResultActions resultActions = locationTestHelper.performGetLocation(nonExistentLocationId);
 
-        assertNotFoundError(resultActions, expectedErrorMessage);
+        locationTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(locationService).getLocationById(nonExistentLocationId);
     }
@@ -281,7 +285,7 @@ public class LocationControllerTest {
         ResultActions resultActions = mockMvc.perform(get("/api/locations/{id}", invalidId)
                 .accept(MediaType.APPLICATION_JSON));
 
-        assertParameterTypeError(resultActions, expectedErrorMessage);
+        locationTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
     }
 
     // === END GET ===
@@ -302,9 +306,9 @@ public class LocationControllerTest {
         when(locationService.updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class)))
                 .thenReturn(updatedLocationDTO);
 
-        ResultActions resultActions = performUpdateLocation(locationIdToUpdate, updateRequest);
+        ResultActions resultActions = locationTestHelper.performUpdateLocation(locationIdToUpdate, updateRequest);
 
-        assertLocationResponse(resultActions, updatedLocationDTO);
+        locationTestHelper.assertLocationResponse(resultActions, updatedLocationDTO);
 
         verify(locationService).updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class));
     }
@@ -351,9 +355,9 @@ public class LocationControllerTest {
     ) throws Exception {
         Long locationIdToUpdate = locationDTO1.id();
 
-        ResultActions resultActions = performUpdateLocation(locationIdToUpdate, invalidRequest);
+        ResultActions resultActions = locationTestHelper.performUpdateLocation(locationIdToUpdate, invalidRequest);
 
-        assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
+        locationTestHelper.assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
 
         verify(locationService, never()).updateLocation(anyLong(), any());
     }
@@ -379,9 +383,9 @@ public class LocationControllerTest {
 
         when(locationService.updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class))).thenReturn(expectedResponse);
 
-        ResultActions resultActions = performUpdateLocation(locationIdToUpdate, requestWithNameNull);
+        ResultActions resultActions = locationTestHelper.performUpdateLocation(locationIdToUpdate, requestWithNameNull);
 
-        assertLocationResponse(resultActions, expectedResponse);
+        locationTestHelper.assertLocationResponse(resultActions, expectedResponse);
 
         ArgumentCaptor<UpdateLocationRequestDTO> dtoCaptor = ArgumentCaptor.forClass(UpdateLocationRequestDTO.class);
         verify(locationService).updateLocation(eq(locationIdToUpdate), dtoCaptor.capture());
@@ -409,9 +413,9 @@ public class LocationControllerTest {
 
         when(locationService.updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class))).thenReturn(expectedResponse);
 
-        ResultActions resultActions = performUpdateLocation(locationIdToUpdate, requestWithCapacityNull);
+        ResultActions resultActions = locationTestHelper.performUpdateLocation(locationIdToUpdate, requestWithCapacityNull);
 
-        assertLocationResponse(resultActions, expectedResponse);
+        locationTestHelper.assertLocationResponse(resultActions, expectedResponse);
 
         ArgumentCaptor<UpdateLocationRequestDTO> dtoCaptor = ArgumentCaptor.forClass(UpdateLocationRequestDTO.class);
         verify(locationService).updateLocation(eq(locationIdToUpdate), dtoCaptor.capture());
@@ -425,9 +429,9 @@ public class LocationControllerTest {
         String expectedErrorMessage = "Location not found with ID: " + nonExistentLocationId;
         when(locationService.updateLocation(eq(nonExistentLocationId), any(UpdateLocationRequestDTO.class))).thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
-        ResultActions resultActions = performUpdateLocation(nonExistentLocationId, updateRequest);
+        ResultActions resultActions = locationTestHelper.performUpdateLocation(nonExistentLocationId, updateRequest);
 
-        assertNotFoundError(resultActions, expectedErrorMessage);
+        locationTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(locationService).updateLocation(eq(nonExistentLocationId), any(UpdateLocationRequestDTO.class));
     }
@@ -449,7 +453,7 @@ public class LocationControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(malformedJsonRequest));
 
-        assertMalformedRequestError(resultActions);
+        locationTestHelper.assertMalformedRequestError(resultActions);
 
         verify(locationService, never()).createLocation(any());
     }
@@ -464,7 +468,7 @@ public class LocationControllerTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(objectMapper.writeValueAsString(updateRequest)));
 
-        assertParameterTypeError(resultActions, expectedErrorMessage);
+        locationTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
     }
 
     @Test
@@ -475,9 +479,9 @@ public class LocationControllerTest {
         when(locationService.updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class)))
                 .thenThrow(new DataIntegrityViolationException(expectedErrorMessage));
 
-        ResultActions resultActions = performUpdateLocation(locationIdToUpdate, updateRequest);
+        ResultActions resultActions = locationTestHelper.performUpdateLocation(locationIdToUpdate, updateRequest);
 
-        assertConflictError(resultActions, expectedErrorMessage);
+        locationTestHelper.assertConflictError(resultActions, expectedErrorMessage);
 
         verify(locationService).updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class));
     }
@@ -492,7 +496,7 @@ public class LocationControllerTest {
         Long locationIdToDelete = locationDTO1.id();
         doNothing().when(locationService).deleteLocation(locationIdToDelete);
 
-        ResultActions resultActions = performDeleteLocation(locationIdToDelete);
+        ResultActions resultActions = locationTestHelper.performDeleteLocation(locationIdToDelete);
 
         resultActions
                 .andExpect(status().isNoContent());
@@ -508,9 +512,9 @@ public class LocationControllerTest {
 
         doThrow(new EntityNotFoundException(expectedErrorMessage)).when(locationService).deleteLocation(nonExistentLocationId);
 
-        ResultActions resultActions = performDeleteLocation(nonExistentLocationId);
+        ResultActions resultActions = locationTestHelper.performDeleteLocation(nonExistentLocationId);
 
-        assertNotFoundError(resultActions, expectedErrorMessage);
+        locationTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(locationService).deleteLocation(nonExistentLocationId);
     }
@@ -526,7 +530,7 @@ public class LocationControllerTest {
 
         doThrow(new ResourceInUseException(conflictErrorMessage, conflictingMeetingIds)).when(locationService).deleteLocation(locationIdToDelete);
 
-        ResultActions resultActions = performDeleteLocation(locationIdToDelete);
+        ResultActions resultActions = locationTestHelper.performDeleteLocation(locationIdToDelete);
 
         resultActions
                 .andExpect(status().isConflict())
@@ -547,7 +551,7 @@ public class LocationControllerTest {
 
         ResultActions resultActions = mockMvc.perform(delete("/api/locations/{id}", invalidId));
 
-        assertParameterTypeError(resultActions, expectedErrorMessage);
+        locationTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
 
         verify(locationService, never()).deleteLocation(anyLong());
     }
@@ -571,7 +575,7 @@ public class LocationControllerTest {
 
         when(availabilityService.getAvailableTimeForLocation(locationId, date)).thenReturn(expectedSlots);
 
-        ResultActions resultActions = performGetAvailability(locationId, date);
+        ResultActions resultActions = locationTestHelper.performGetLocationAvailability(locationId, date);
 
         resultActions
                 .andExpect(status().isOk())
@@ -595,9 +599,9 @@ public class LocationControllerTest {
         when(availabilityService.getAvailableTimeForLocation(nonExistentLocationId, date))
                 .thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
-        ResultActions resultActions = performGetAvailability(nonExistentLocationId, date);
+        ResultActions resultActions = locationTestHelper.performGetLocationAvailability(nonExistentLocationId, date);
 
-        assertNotFoundError(resultActions, expectedErrorMessage);
+        locationTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(availabilityService).getAvailableTimeForLocation(nonExistentLocationId, date);
     }
@@ -631,7 +635,7 @@ public class LocationControllerTest {
                 .param("date", invalidDateStr)
                 .accept(MediaType.APPLICATION_JSON));
 
-        assertParameterTypeError(resultActions, expectedErrorMessage);
+        locationTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
 
         verify(availabilityService, never()).getAvailableTimeForLocation(anyLong(), any(LocalDate.class));
     }
@@ -667,7 +671,7 @@ public class LocationControllerTest {
         when(availabilityService.getAvailabilityForLocationsByDuration(requestDTO))
                 .thenReturn(expectedResults);
 
-        ResultActions resultActions = performAvailabilityByDuration(requestDTO);
+        ResultActions resultActions = locationTestHelper.performAvailabilityByDuration(requestDTO);
 
         resultActions
                 .andExpect(status().isOk())
@@ -699,7 +703,7 @@ public class LocationControllerTest {
         when(availabilityService.getAvailabilityForLocationsByDuration(requestDTOWithNullCapacity))
                 .thenReturn(expectedResults);
 
-        ResultActions resultActions = performAvailabilityByDuration(requestDTOWithNullCapacity);
+        ResultActions resultActions = locationTestHelper.performAvailabilityByDuration(requestDTOWithNullCapacity);
 
         resultActions
                 .andExpect(status().isOk());
@@ -774,9 +778,9 @@ public class LocationControllerTest {
             String expectedErrorMessage
     ) throws Exception {
 
-        ResultActions resultActions = performAvailabilityByDuration(invalidRequest);
+        ResultActions resultActions = locationTestHelper.performAvailabilityByDuration(invalidRequest);
 
-        assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
+        locationTestHelper.assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
 
         verify(availabilityService, never()).getAvailabilityForLocationsByDuration(any(LocationAvailabilityRequestDTO.class));
     }
@@ -797,155 +801,11 @@ public class LocationControllerTest {
                 .content(malformedJsonRequest)
                 .accept(MediaType.APPLICATION_JSON));
 
-        assertMalformedRequestError(resultActions);
+        locationTestHelper.assertMalformedRequestError(resultActions);
 
         verify(availabilityService, never()).getAvailabilityForLocationsByDuration(any());
     }
 
     // === END AVAILABILITY BY DURATION ===
 
-    // === HELPER METHODS ===
-
-    // --- BUILD REQUEST ---
-
-    // POST requests
-    private ResultActions performCreateLocation(CreateLocationRequestDTO request) throws Exception {
-        return mockMvc.perform(post("/api/locations")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)));
-    }
-
-    // PUT requests
-    private ResultActions performUpdateLocation(Long id, UpdateLocationRequestDTO request) throws Exception {
-        return mockMvc.perform(put("/api/locations/{id}", id)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)));
-    }
-
-    // GET All requests
-    private ResultActions performGetAllLocations() throws Exception {
-        return mockMvc.perform(get("/api/locations")
-                .accept(MediaType.APPLICATION_JSON));
-    }
-
-    // GET by ID requests
-    private ResultActions performGetLocation(Long id) throws Exception {
-        return mockMvc.perform(get("/api/locations/{id}", id)
-                .accept(MediaType.APPLICATION_JSON));
-    }
-
-    // DELETE by ID requests
-    private ResultActions performDeleteLocation(Long id) throws Exception {
-        return mockMvc.perform(delete("/api/locations/{id}", id));
-    }
-
-    // GET Availability by ID requests
-    private ResultActions performGetAvailability(Long id, LocalDate date) throws Exception {
-        return mockMvc.perform(get("/api/locations/{id}/availability", id)
-                .param("date", date.toString())
-                .accept(MediaType.APPLICATION_JSON));
-    }
-
-    // Availability by duration requests
-    private ResultActions performAvailabilityByDuration(LocationAvailabilityRequestDTO request) throws Exception {
-        return mockMvc.perform(post("/api/locations/availability-by-duration")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .accept(MediaType.APPLICATION_JSON));
-    }
-
-    // --- END BUILD REQUEST ---
-
-    // --- ASSERT SUCCESSFUL RESPONSE ---
-
-    // For successful location responses (200)
-    private void assertLocationResponse(ResultActions resultActions, LocationDTO expected) throws Exception {
-        resultActions
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id", is(expected.id().intValue())))
-                .andExpect(jsonPath("$.name", is(expected.name())))
-                .andExpect(jsonPath("$.capacity", is(expected.capacity())));
-    }
-
-    // For created responses (201)
-    private void assertCreatedLocationResponse(ResultActions resultActions, LocationDTO expected) throws Exception {
-        resultActions
-                .andExpect(status().isCreated())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id", is(expected.id().intValue())))
-                .andExpect(jsonPath("$.name", is(expected.name())))
-                .andExpect(jsonPath("$.capacity", is(expected.capacity())));
-    }
-
-    // For location lists (200)
-    private void assertLocationListResponse(ResultActions resultActions, List<LocationDTO> expected) throws Exception {
-        resultActions
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()", is(expected.size())));
-
-        for (int i = 0; i < expected.size(); i++) {
-            LocationDTO location = expected.get(i);
-            resultActions
-                    .andExpect(jsonPath("$[" + i + "].id", is(location.id().intValue())))
-                    .andExpect(jsonPath("$[" + i + "].name", is(location.name())))
-                    .andExpect(jsonPath("$[" + i + "].capacity", is(location.capacity())));
-        }
-    }
-
-    // --- END ASSERT SUCCESSFUL RESPONSE ---
-
-    // --- ASSERT ERROR RESPONSE ---
-
-    // Generic error response checker
-    private void assertErrorResponse(ResultActions resultActions, HttpStatus expectedStatus,
-                                     String expectedError, String expectedMessage) throws Exception {
-        resultActions
-                .andExpect(status().is(expectedStatus.value()))
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(expectedStatus.value())))
-                .andExpect(jsonPath("$.error", is(expectedError)))
-                .andExpect(jsonPath("$.messages[0]", is(expectedMessage)));
-    }
-
-    // Validation error (400)
-    private void assertValidationError(ResultActions resultActions, String expectedTarget,
-                                       String expectedMessage) throws Exception {
-        assertErrorResponse(resultActions, HttpStatus.BAD_REQUEST, "Validation Failed",
-                expectedTarget + ": " + expectedMessage);
-    }
-
-    // Not found errors (404)
-    private void assertNotFoundError(ResultActions resultActions, String expectedMessage) throws Exception {
-        assertErrorResponse(resultActions, HttpStatus.NOT_FOUND, "Resource Not Found", expectedMessage);
-    }
-
-    // Conflict errors (409)
-    private void assertConflictError(ResultActions resultActions, String expectedMessage) throws Exception {
-        assertErrorResponse(resultActions, HttpStatus.CONFLICT, "Data Conflict/Integrity Violation", expectedMessage);
-    }
-
-    // Parameter type errors
-    private void assertParameterTypeError(ResultActions resultActions, String expectedMessage) throws Exception {
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", is("Invalid Parameter Type/Format")))
-                .andExpect(jsonPath("$.messages[0]", containsString(expectedMessage)));
-    }
-
-    // Malformed request body errors
-    private void assertMalformedRequestError(ResultActions resultActions) throws Exception {
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", containsString("Malformed Request Body")))
-                .andExpect(jsonPath("$.messages[0]", containsString("Request body is malformed or contains invalid data/format.")));
-    }
-
-    // --- END ASSERT ERROR RESPONSE ---
-
-    // === END HELPER METHODS
 }

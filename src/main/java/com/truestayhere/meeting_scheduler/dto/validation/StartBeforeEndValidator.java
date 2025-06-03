@@ -21,7 +21,7 @@ public class StartBeforeEndValidator implements ConstraintValidator<StartBeforeE
             Object endTimeObj = beanWrapper.getPropertyValue("endTime");
 
             if (startTimeObj == null || endTimeObj == null) {
-                return false;
+                return true;
             }
 
             if (!(startTimeObj instanceof LocalDateTime startTime) || !(endTimeObj instanceof LocalDateTime endTime)) {

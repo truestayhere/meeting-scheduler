@@ -10,6 +10,7 @@ import com.truestayhere.meeting_scheduler.dto.response.AttendeeDTO;
 import com.truestayhere.meeting_scheduler.dto.response.AvailableSlotDTO;
 import com.truestayhere.meeting_scheduler.exception.GlobalExceptionHandler;
 import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
+import com.truestayhere.meeting_scheduler.helper.AttendeeTestHelper;
 import com.truestayhere.meeting_scheduler.service.AttendeeService;
 import com.truestayhere.meeting_scheduler.service.AvailabilityService;
 import jakarta.persistence.EntityNotFoundException;
@@ -42,7 +43,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -70,6 +71,8 @@ public class AttendeeControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private AttendeeTestHelper attendeeTestHelper;
+
     LocalDate DEFAULT_DATE = LocalDate.of(Year.now().getValue() + 1, 8, 14);
 
     private CreateAttendeeRequestDTO createRequest;
@@ -79,6 +82,8 @@ public class AttendeeControllerTest {
 
     @BeforeEach
     void setUp() {
+        attendeeTestHelper = new AttendeeTestHelper(mockMvc, objectMapper);
+
         attendeeDTO1 = new AttendeeDTO(
                 1L,
                 "Attendee One",
@@ -117,9 +122,9 @@ public class AttendeeControllerTest {
     void createAttendee_whenValidInput_shouldReturn201CreatedAndAttendeeResponse() throws Exception {
         when(attendeeService.createAttendee(any(CreateAttendeeRequestDTO.class))).thenReturn(attendeeDTO1);
 
-        ResultActions resultActions = performCreateAttendee(createRequest);
+        ResultActions resultActions = attendeeTestHelper.performCreateAttendee(createRequest);
 
-        assertCreatedAttendeeResponse(resultActions, attendeeDTO1);
+        attendeeTestHelper.assertCreatedAttendeeResponse(resultActions, attendeeDTO1);
 
         verify(attendeeService).createAttendee(any(CreateAttendeeRequestDTO.class));
     }
@@ -200,9 +205,9 @@ public class AttendeeControllerTest {
             String expectedErrorMessage
     ) throws Exception {
 
-        ResultActions resultActions = performCreateAttendee(invalidRequest);
+        ResultActions resultActions = attendeeTestHelper.performCreateAttendee(invalidRequest);
 
-        assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
+        attendeeTestHelper.assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
 
         verify(attendeeService, never()).createAttendee(any());
     }
@@ -224,7 +229,7 @@ public class AttendeeControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(malformedJsonRequest));
 
-        assertMalformedRequestError(resultActions);
+        attendeeTestHelper.assertMalformedRequestError(resultActions);
 
         verify(attendeeService, never()).createAttendee(any());
     }
@@ -236,9 +241,9 @@ public class AttendeeControllerTest {
         when(attendeeService.createAttendee(any(CreateAttendeeRequestDTO.class)))
                 .thenThrow(new DataIntegrityViolationException(expectedErrorMessage));
 
-        ResultActions resultActions = performCreateAttendee(createRequest);
+        ResultActions resultActions = attendeeTestHelper.performCreateAttendee(createRequest);
 
-        assertConflictError(resultActions, expectedErrorMessage);
+        attendeeTestHelper.assertConflictError(resultActions, expectedErrorMessage);
 
         verify(attendeeService).createAttendee(any(CreateAttendeeRequestDTO.class));
     }
@@ -254,9 +259,9 @@ public class AttendeeControllerTest {
 
         when(attendeeService.getAllAttendees()).thenReturn(expectedAttendees);
 
-        ResultActions resultActions = performGetAllAttendees();
+        ResultActions resultActions = attendeeTestHelper.performGetAllAttendees();
 
-        assertAttendeeListResponse(resultActions, expectedAttendees);
+        attendeeTestHelper.assertAttendeeListResponse(resultActions, expectedAttendees);
 
         verify(attendeeService).getAllAttendees();
     }
@@ -266,9 +271,9 @@ public class AttendeeControllerTest {
     void getAllAttendees_whenNoAttendees_shouldReturn200OkAndEmptyList() throws Exception {
         when(attendeeService.getAllAttendees()).thenReturn(List.of());
 
-        ResultActions resultActions = performGetAllAttendees();
+        ResultActions resultActions = attendeeTestHelper.performGetAllAttendees();
 
-        assertAttendeeListResponse(resultActions, List.of());
+        attendeeTestHelper.assertAttendeeListResponse(resultActions, List.of());
 
         verify(attendeeService).getAllAttendees();
     }
@@ -279,9 +284,9 @@ public class AttendeeControllerTest {
         Long attendeeId = attendeeDTO1.id();
         when(attendeeService.getAttendeeById(attendeeId)).thenReturn(attendeeDTO1);
 
-        ResultActions resultActions = performGetAttendee(attendeeId);
+        ResultActions resultActions = attendeeTestHelper.performGetAttendee(attendeeId);
 
-        assertAttendeeResponse(resultActions, attendeeDTO1);
+        attendeeTestHelper.assertAttendeeResponse(resultActions, attendeeDTO1);
 
         verify(attendeeService).getAttendeeById(attendeeId);
     }
@@ -294,9 +299,9 @@ public class AttendeeControllerTest {
 
         when(attendeeService.getAttendeeById(nonExistentAttendeeId)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
-        ResultActions resultActions = performGetAttendee(nonExistentAttendeeId);
+        ResultActions resultActions = attendeeTestHelper.performGetAttendee(nonExistentAttendeeId);
 
-        assertNotFoundError(resultActions, expectedErrorMessage);
+        attendeeTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(attendeeService).getAttendeeById(nonExistentAttendeeId);
     }
@@ -310,7 +315,7 @@ public class AttendeeControllerTest {
         ResultActions resultActions = mockMvc.perform(get("/api/attendees/{id}", invalidId)
                 .accept(MediaType.APPLICATION_JSON));
 
-        assertParameterTypeError(resultActions, expectedErrorMessage);
+        attendeeTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
     }
 
     // === END GET ===
@@ -330,9 +335,9 @@ public class AttendeeControllerTest {
 
         when(attendeeService.updateAttendee(eq(attendeeIdToUpdate), any(UpdateAttendeeRequestDTO.class))).thenReturn(updatedAttendeeDTO);
 
-        ResultActions resultActions = performUpdateAttendee(attendeeIdToUpdate, updateRequest);
+        ResultActions resultActions = attendeeTestHelper.performUpdateAttendee(attendeeIdToUpdate, updateRequest);
 
-        assertAttendeeResponse(resultActions, updatedAttendeeDTO);
+        attendeeTestHelper.assertAttendeeResponse(resultActions, updatedAttendeeDTO);
 
         verify(attendeeService).updateAttendee(eq(attendeeIdToUpdate), any(UpdateAttendeeRequestDTO.class));
     }
@@ -360,9 +365,9 @@ public class AttendeeControllerTest {
 
         when(attendeeService.updateAttendee(eq(attendeeIdToUpdate), any(UpdateAttendeeRequestDTO.class))).thenReturn(expectedResponse);
 
-        ResultActions resultActions = performUpdateAttendee(attendeeIdToUpdate, requestWithNameNull);
+        ResultActions resultActions = attendeeTestHelper.performUpdateAttendee(attendeeIdToUpdate, requestWithNameNull);
 
-        assertAttendeeResponse(resultActions, expectedResponse);
+        attendeeTestHelper.assertAttendeeResponse(resultActions, expectedResponse);
 
         ArgumentCaptor<UpdateAttendeeRequestDTO> dtoCaptor = ArgumentCaptor.forClass(UpdateAttendeeRequestDTO.class);
         verify(attendeeService).updateAttendee(eq(attendeeIdToUpdate), dtoCaptor.capture());
@@ -392,9 +397,9 @@ public class AttendeeControllerTest {
 
         when(attendeeService.updateAttendee(eq(attendeeIdToUpdate), any(UpdateAttendeeRequestDTO.class))).thenReturn(expectedResponse);
 
-        ResultActions resultActions = performUpdateAttendee(attendeeIdToUpdate, requestWithEmailNull);
+        ResultActions resultActions = attendeeTestHelper.performUpdateAttendee(attendeeIdToUpdate, requestWithEmailNull);
 
-        assertAttendeeResponse(resultActions, expectedResponse);
+        attendeeTestHelper.assertAttendeeResponse(resultActions, expectedResponse);
 
         ArgumentCaptor<UpdateAttendeeRequestDTO> dtoCaptor = ArgumentCaptor.forClass(UpdateAttendeeRequestDTO.class);
         verify(attendeeService).updateAttendee(eq(attendeeIdToUpdate), dtoCaptor.capture());
@@ -460,9 +465,9 @@ public class AttendeeControllerTest {
     ) throws Exception {
         Long attendeeIdToUpdate = attendeeDTO1.id();
 
-        ResultActions resultActions = performUpdateAttendee(attendeeIdToUpdate, invalidRequest);
+        ResultActions resultActions = attendeeTestHelper.performUpdateAttendee(attendeeIdToUpdate, invalidRequest);
 
-        assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
+        attendeeTestHelper.assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
 
         verify(attendeeService, never()).updateAttendee(anyLong(), any());
     }
@@ -474,7 +479,9 @@ public class AttendeeControllerTest {
         String expectedErrorMessage = "Attendee not found with ID: " + nonExistentAttendeeId;
         when(attendeeService.updateAttendee(eq(nonExistentAttendeeId), any(UpdateAttendeeRequestDTO.class))).thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
-        ResultActions resultActions = performUpdateAttendee(nonExistentAttendeeId, updateRequest);
+        ResultActions resultActions = attendeeTestHelper.performUpdateAttendee(nonExistentAttendeeId, updateRequest);
+
+        attendeeTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(attendeeService).updateAttendee(eq(nonExistentAttendeeId), any(UpdateAttendeeRequestDTO.class));
     }
@@ -487,9 +494,9 @@ public class AttendeeControllerTest {
         when(attendeeService.updateAttendee(eq(attendeeIdToUpdate), any(UpdateAttendeeRequestDTO.class)))
                 .thenThrow(new DataIntegrityViolationException(expectedErrorMessage));
 
-        ResultActions resultActions = performUpdateAttendee(attendeeIdToUpdate, updateRequest);
+        ResultActions resultActions = attendeeTestHelper.performUpdateAttendee(attendeeIdToUpdate, updateRequest);
 
-        assertConflictError(resultActions, expectedErrorMessage);
+        attendeeTestHelper.assertConflictError(resultActions, expectedErrorMessage);
 
         verify(attendeeService).updateAttendee(eq(attendeeIdToUpdate), any(UpdateAttendeeRequestDTO.class));
     }
@@ -504,7 +511,30 @@ public class AttendeeControllerTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(objectMapper.writeValueAsString(updateRequest)));
 
-        assertParameterTypeError(resultActions, expectedErrorMessage);
+        attendeeTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
+    }
+
+    @Test
+    @WithMockUser
+    void updateAttendee_whenWorkingTimeIsMalformedString_shouldReturn400BadRequest() throws Exception {
+        Long attendeeIdToUpdate = attendeeDTO1.id();
+        String malformedJsonRequest = """
+                {
+                    "name": "Attendee Name Updated",
+                    "email": "attendeenameupdated@test.com",
+                    "password": "newRawPassword",
+                    "role": "ROLE_USER",
+                    "workingStartTime": "INVALID-TIME-FORMAT",
+                    "workingEndTime": "17:00"
+                }
+                """;
+        ResultActions resultActions = mockMvc.perform(put("/api/attendees/{id}", attendeeIdToUpdate)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(malformedJsonRequest));
+
+        attendeeTestHelper.assertMalformedRequestError(resultActions);
+
+        verify(attendeeService, never()).updateAttendee(anyLong(), any());
     }
 
     // === END UPDATE ===
@@ -517,7 +547,7 @@ public class AttendeeControllerTest {
         Long attendeeIdToDelete = attendeeDTO1.id();
         doNothing().when(attendeeService).deleteAttendee(attendeeIdToDelete);
 
-        ResultActions resultActions = performDeleteAttendee(attendeeIdToDelete);
+        ResultActions resultActions = attendeeTestHelper.performDeleteAttendee(attendeeIdToDelete);
 
         resultActions
                 .andExpect(status().isNoContent());
@@ -533,9 +563,9 @@ public class AttendeeControllerTest {
 
         doThrow(new EntityNotFoundException(expectedErrorMessage)).when(attendeeService).deleteAttendee(nonExistentAttendeeId);
 
-        ResultActions resultActions = performDeleteAttendee(nonExistentAttendeeId);
+        ResultActions resultActions = attendeeTestHelper.performDeleteAttendee(nonExistentAttendeeId);
 
-        assertNotFoundError(resultActions, expectedErrorMessage);
+        attendeeTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(attendeeService).deleteAttendee(nonExistentAttendeeId);
     }
@@ -551,7 +581,7 @@ public class AttendeeControllerTest {
 
         doThrow(new ResourceInUseException(conflictErrorMessage, conflictingMeetingIds)).when(attendeeService).deleteAttendee(attendeeIdToDelete);
 
-        ResultActions resultActions = performDeleteAttendee(attendeeIdToDelete);
+        ResultActions resultActions = attendeeTestHelper.performDeleteAttendee(attendeeIdToDelete);
 
         resultActions
                 .andExpect(status().isConflict())
@@ -572,7 +602,7 @@ public class AttendeeControllerTest {
 
         ResultActions resultActions = mockMvc.perform(delete("/api/attendees/{id}", invalidId));
 
-        assertParameterTypeError(resultActions, expectedErrorMessage);
+        attendeeTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
 
         verify(attendeeService, never()).deleteAttendee(anyLong());
     }
@@ -596,7 +626,7 @@ public class AttendeeControllerTest {
 
         when(availabilityService.getAvailableTimeForAttendee(attendeeId, date)).thenReturn(expectedSlots);
 
-        ResultActions resultActions = performGetAvailability(attendeeId, date);
+        ResultActions resultActions = attendeeTestHelper.performGetAttendeeAvailability(attendeeId, date);
 
         resultActions
                 .andExpect(status().isOk())
@@ -620,9 +650,9 @@ public class AttendeeControllerTest {
         when(availabilityService.getAvailableTimeForAttendee(nonExistentAttendeeId, date))
                 .thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
-        ResultActions resultActions = performGetAvailability(nonExistentAttendeeId, date);
+        ResultActions resultActions = attendeeTestHelper.performGetAttendeeAvailability(nonExistentAttendeeId, date);
 
-        assertNotFoundError(resultActions, expectedErrorMessage);
+        attendeeTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
 
         verify(availabilityService).getAvailableTimeForAttendee(nonExistentAttendeeId, date);
 
@@ -657,7 +687,7 @@ public class AttendeeControllerTest {
                 .param("date", invalidDateStr)
                 .accept(MediaType.APPLICATION_JSON));
 
-        assertParameterTypeError(resultActions, expectedErrorMessage);
+        attendeeTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
 
         verify(availabilityService, never()).getAvailableTimeForAttendee(anyLong(), any(LocalDate.class));
     }
@@ -685,7 +715,7 @@ public class AttendeeControllerTest {
 
         when(availabilityService.getCommonAttendeeAvailability(requestDTO)).thenReturn(expectedSlots);
 
-        ResultActions resultActions = performFindCommonAvailability(requestDTO);
+        ResultActions resultActions = attendeeTestHelper.performFindCommonAvailability(requestDTO);
 
         resultActions
                 .andExpect(status().isOk())
@@ -739,9 +769,9 @@ public class AttendeeControllerTest {
             String expectedErrorMessage
     ) throws Exception {
 
-        ResultActions resultActions = performFindCommonAvailability(invalidRequest);
+        ResultActions resultActions = attendeeTestHelper.performFindCommonAvailability(invalidRequest);
 
-        assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
+        attendeeTestHelper.assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
 
         verify(availabilityService, never()).getCommonAttendeeAvailability(any());
     }
@@ -761,155 +791,11 @@ public class AttendeeControllerTest {
                 .content(malformedJsonRequest)
                 .accept(MediaType.APPLICATION_JSON));
 
-        assertMalformedRequestError(resultActions);
+        attendeeTestHelper.assertMalformedRequestError(resultActions);
 
         verify(availabilityService, never()).getCommonAttendeeAvailability(any());
     }
 
-
     // === END COMMON AVAILABILITY ===
 
-    // === HELPER METHODS ===
-
-    // --- BUILD REQUEST ---
-
-    // POST requests
-    private ResultActions performCreateAttendee(CreateAttendeeRequestDTO request) throws Exception {
-        return mockMvc.perform(post("/api/attendees")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)));
-    }
-
-    // PUT requests
-    private ResultActions performUpdateAttendee(Long id, UpdateAttendeeRequestDTO request) throws Exception {
-        return mockMvc.perform(put("/api/attendees/{id}", id)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)));
-    }
-
-    // GET All requests
-    private ResultActions performGetAllAttendees() throws Exception {
-        return mockMvc.perform(get("/api/attendees")
-                .contentType(MediaType.APPLICATION_JSON));
-    }
-
-    // GET by ID requests
-    private ResultActions performGetAttendee(Long id) throws Exception {
-        return mockMvc.perform(get("/api/attendees/{id}", id)
-                .contentType(MediaType.APPLICATION_JSON));
-    }
-
-    // DELETE by ID requests
-    private ResultActions performDeleteAttendee(Long id) throws Exception {
-        return mockMvc.perform(delete("/api/attendees/{id}", id));
-    }
-
-    // GET Availability by ID requests
-    private ResultActions performGetAvailability(Long id, LocalDate date) throws Exception {
-        return mockMvc.perform(get("/api/attendees/{id}/availability", id)
-                .param("date", date.toString())
-                .accept(MediaType.APPLICATION_JSON));
-    }
-
-    // Common Availability requests
-    private ResultActions performFindCommonAvailability(CommonAvailabilityRequestDTO request) throws Exception {
-        return mockMvc.perform(post("/api/attendees/common-availability")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)));
-    }
-
-    // --- END BUILD REQUEST ---
-
-    // --- ASSERT SUCCESSFUL RESPONSE ---
-
-    // For successful attendee responses (200)
-    private void assertAttendeeResponse(ResultActions resultActions, AttendeeDTO expected) throws Exception {
-        resultActions
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id", is(expected.id().intValue())))
-                .andExpect(jsonPath("$.name", is(expected.name())))
-                .andExpect(jsonPath("$.email", is(expected.email())));
-    }
-
-    // For created responses (201)
-    private void assertCreatedAttendeeResponse(ResultActions resultActions, AttendeeDTO expected) throws Exception {
-        resultActions
-                .andExpect(status().isCreated())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id", is(expected.id().intValue())))
-                .andExpect(jsonPath("$.name", is(expected.name())))
-                .andExpect(jsonPath("$.email", is(expected.email())));
-    }
-
-    // For attendee lists (200)
-    private void assertAttendeeListResponse(ResultActions resultActions, List<AttendeeDTO> expected) throws Exception {
-        resultActions
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()", is(expected.size())));
-
-        for (int i = 0; i < expected.size(); i++) {
-            AttendeeDTO attendee = expected.get(i);
-            resultActions
-                    .andExpect(jsonPath("$[" + i + "].id", is(attendee.id().intValue())))
-                    .andExpect(jsonPath("$[" + i + "].name", is(attendee.name())))
-                    .andExpect(jsonPath("$[" + i + "].email", is(attendee.email())));
-        }
-    }
-
-    // --- END ASSERT SUCCESSFUL RESPONSE ---
-
-    // --- ASSERT ERROR RESPONSE ---
-
-    // Generic error response checker
-    private void assertErrorResponse(ResultActions resultActions, HttpStatus expectedStatus,
-                                     String expectedError, String expectedMessage) throws Exception {
-        resultActions
-                .andExpect(status().is(expectedStatus.value()))
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(expectedStatus.value())))
-                .andExpect(jsonPath("$.error", is(expectedError)))
-                .andExpect(jsonPath("$.messages[0]", is(expectedMessage)));
-    }
-
-    // Validation error (400)
-    private void assertValidationError(ResultActions resultActions, String expectedTarget,
-                                       String expectedMessage) throws Exception {
-        assertErrorResponse(resultActions, HttpStatus.BAD_REQUEST, "Validation Failed",
-                expectedTarget + ": " + expectedMessage);
-    }
-
-    // Not found errors (404)
-    private void assertNotFoundError(ResultActions resultActions, String expectedMessage) throws Exception {
-        assertErrorResponse(resultActions, HttpStatus.NOT_FOUND, "Resource Not Found", expectedMessage);
-    }
-
-    // Conflict errors (409)
-    private void assertConflictError(ResultActions resultActions, String expectedMessage) throws Exception {
-        assertErrorResponse(resultActions, HttpStatus.CONFLICT, "Data Conflict/Integrity Violation", expectedMessage);
-    }
-
-    // Parameter type errors
-    private void assertParameterTypeError(ResultActions resultActions, String expectedMessage) throws Exception {
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", is("Invalid Parameter Type/Format")))
-                .andExpect(jsonPath("$.messages[0]", containsString(expectedMessage)));
-    }
-
-    // Malformed request body errors
-    private void assertMalformedRequestError(ResultActions resultActions) throws Exception {
-        resultActions
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
-                .andExpect(jsonPath("$.error", containsString("Malformed Request Body")))
-                .andExpect(jsonPath("$.messages[0]", containsString("Request body is malformed or contains invalid data/format.")));
-    }
-
-    // --- END ASSERT ERROR RESPONSE ---
-
-    // === END HELPER METHODS ===
 }
