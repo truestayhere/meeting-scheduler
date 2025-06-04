@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Function;
 
@@ -74,6 +75,16 @@ public class MockMvcTestHelper {
     public ResultActions performGetAvailability(String endpoint, Long id, LocalDate date) throws Exception {
         return mockMvc.perform(get(endpoint + "/{id}/availability", id)
                 .param("date", date.toString())
+                .accept(MediaType.APPLICATION_JSON));
+    }
+
+    /**
+     * Performs GET request with custom endpoint and range parameters
+     */
+    public ResultActions performGetMeetingsBy(String endpoint, Long id, LocalDateTime rangeStart, LocalDateTime rangeEnd) throws Exception {
+        return mockMvc.perform(get(endpoint + "/{id}", id)
+                .param("start", rangeStart.toString())
+                .param("end", rangeEnd.toString())
                 .accept(MediaType.APPLICATION_JSON));
     }
 

@@ -681,7 +681,7 @@ public class AttendeeControllerTest {
     void getAttendeeAvailability_whenInvalidDateFormat_shouldReturn400BadRequest() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         String invalidDateStr = "15-08-2024";
-        String expectedErrorMessage = "Parameter 'date' should be of type 'LocalDate' but received value: '15-08-2024'.";
+        String expectedErrorMessage = "Parameter 'date' should be of type 'LocalDate' but received value: '" + invalidDateStr + "'.";
 
         ResultActions resultActions = mockMvc.perform(get("/api/attendees/{id}/availability", attendeeId)
                 .param("date", invalidDateStr)

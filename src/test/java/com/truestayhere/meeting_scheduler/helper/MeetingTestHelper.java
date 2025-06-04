@@ -3,13 +3,17 @@ package com.truestayhere.meeting_scheduler.helper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.truestayhere.meeting_scheduler.dto.request.*;
 import com.truestayhere.meeting_scheduler.dto.response.MeetingDTO;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static org.hamcrest.Matchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
@@ -40,8 +44,20 @@ public class MeetingTestHelper extends MockMvcTestHelper {
         return performGetById(MEETINGS_ENDPOINT, id);
     }
 
+    public ResultActions performGetMeetingsByAttendeeAndRange(Long id, LocalDateTime rangeStart, LocalDateTime rangeEnd) throws Exception {
+        return performGetMeetingsBy(MEETINGS_ENDPOINT + "/byAttendee", id, rangeStart, rangeEnd);
+    }
+
+    public ResultActions performGetMeetingsByLocationAndRange(Long id, LocalDateTime rangeStart, LocalDateTime rangeEnd) throws Exception {
+        return performGetMeetingsBy(MEETINGS_ENDPOINT + "/byLocation", id, rangeStart, rangeEnd);
+    }
+
     public ResultActions performDeleteMeeting(Long id) throws Exception {
         return performDeleteById(MEETINGS_ENDPOINT, id);
+    }
+
+    public ResultActions performFindMeetingSuggestions(MeetingSuggestionRequestDTO requestDTO) throws Exception {
+        return performPostRequest(MEETINGS_ENDPOINT + "/suggestions", requestDTO);
     }
 
     // Response assertion methods using custom validators

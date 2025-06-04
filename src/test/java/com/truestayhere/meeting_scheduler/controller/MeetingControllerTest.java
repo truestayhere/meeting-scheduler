@@ -4,10 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.truestayhere.meeting_scheduler.config.CustomAuthenticationEntryPoint;
 import com.truestayhere.meeting_scheduler.config.SecurityConfig;
 import com.truestayhere.meeting_scheduler.dto.request.CreateMeetingRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.MeetingSuggestionRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.request.UpdateMeetingRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.response.AttendeeDTO;
-import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
-import com.truestayhere.meeting_scheduler.dto.response.MeetingDTO;
+import com.truestayhere.meeting_scheduler.dto.response.*;
 import com.truestayhere.meeting_scheduler.exception.GlobalExceptionHandler;
 import com.truestayhere.meeting_scheduler.helper.MeetingTestHelper;
 import com.truestayhere.meeting_scheduler.service.AvailabilityService;
@@ -33,22 +32,18 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 
 @WebMvcTest(MeetingController.class)
@@ -673,37 +668,87 @@ public class MeetingControllerTest {
     @Test
     @WithMockUser
     void getMeetingsByAttendeeAndRange_whenValidInputAndAttendeeExists_shouldReturn200OkAndListOfMeetings() throws Exception{
+        Long attendeeId = attendeeDTO1.id();
+        LocalDateTime rangeStart = DEFAULT_RANGE_START;
+        LocalDateTime rangeEnd = DEFAULT_RANGE_END;
+        List<MeetingDTO> expectedResults = List.of(meetingDTO1, meetingDTO2);
+        when(availabilityService.getMeetingsForAttendeeInRange(attendeeId, rangeStart, rangeEnd)).thenReturn(expectedResults);
 
+        ResultActions resultActions = meetingTestHelper.performGetMeetingsByAttendeeAndRange(attendeeId, rangeStart, rangeEnd);
+
+        meetingTestHelper.assertMeetingListResponse(resultActions, expectedResults);
+
+        verify(availabilityService).getMeetingsForAttendeeInRange(attendeeId, rangeStart, rangeEnd);
     }
 
     @Test
     @WithMockUser
     void getMeetingsByAttendeeAndRange_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception{
+        Long nonExistentAttendeeId = 0L;
+        LocalDateTime rangeStart = DEFAULT_RANGE_START;
+        LocalDateTime rangeEnd = DEFAULT_RANGE_END;
+        String expectedErrorMessage = "Attendee not found with ID: " + nonExistentAttendeeId;
+        when(availabilityService.getMeetingsForAttendeeInRange(nonExistentAttendeeId, rangeStart, rangeEnd)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
+        ResultActions resultActions = meetingTestHelper.performGetMeetingsByAttendeeAndRange(nonExistentAttendeeId, rangeStart, rangeEnd);
+
+        meetingTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
+
+        verify(availabilityService).getMeetingsForAttendeeInRange(nonExistentAttendeeId, rangeStart, rangeEnd);
     }
 
     @Test
     @WithMockUser
     void getMeetingsByAttendeeAndRange_whenMissingTimeParams_shouldReturn400BadRequest() throws Exception{
+        Long attendeeId = attendeeDTO1.id();
+        String expectedErrorMessage = "Required parameter 'start' of type 'LocalDateTime' is missing.";
 
+        ResultActions resultActions = mockMvc.perform(get("/api/meetings/byAttendee/{id}", attendeeId)
+                .accept(MediaType.APPLICATION_JSON));
+
+        resultActions
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+                .andExpect(jsonPath("$.error", is("Missing Request Parameter")))
+                .andExpect(jsonPath("$.messages[0]", is(expectedErrorMessage)));
+
+        verify(availabilityService, never()).getMeetingsForAttendeeInRange(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
     }
 
     @Test
     @WithMockUser
     void getMeetingsByAttendeeAndRange_whenInvalidDateTimeFormat_shouldReturn400BadRequest() throws Exception{
+        Long attendeeId = attendeeDTO1.id();
+        String invalidDateTimeStr = "30-08-2025T10:00:00";
+        LocalDateTime rangeEnd = DEFAULT_RANGE_END;
+        String expectedErrorMessage = "Parameter 'start' should be of type 'LocalDateTime' but received value: '" + invalidDateTimeStr + "'.";
 
-    }
+        ResultActions resultActions = mockMvc.perform(get("/api/meetings/byAttendee/{id}", attendeeId)
+                .param("start", invalidDateTimeStr)
+                .param("end", rangeEnd.toString())
+                .accept(MediaType.APPLICATION_JSON));
 
-    @Test
-    @WithMockUser
-    void getMeetingsByAttendeeAndRange_whenStartTimeAfterEndTime_shouldReturn400BadRequest() throws Exception{
+        meetingTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
 
+        verify(availabilityService, never()).getMeetingsForAttendeeInRange(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
     }
 
     @Test
     @WithMockUser
     void getMeetingsByAttendeeAndRange_whenAttendeeIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception{
+        String invalidId = "abc";
+        LocalDateTime rangeStart = DEFAULT_RANGE_START;
+        LocalDateTime rangeEnd = DEFAULT_RANGE_END;
+        String expectedErrorMessage = "Parameter 'attendeeId' should be of type 'Long' but received value: '" + invalidId + "'.";
 
+        ResultActions resultActions = mockMvc.perform(get("/api/meetings/byAttendee/{id}", invalidId)
+                .param("start", rangeStart.toString())
+                .param("end", rangeEnd.toString())
+                .accept(MediaType.APPLICATION_JSON));
+
+        meetingTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
+
+        verify(availabilityService, never()).getMeetingsForAttendeeInRange(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
     }
 
     // === END GET BY ATTENDEE ===
@@ -713,37 +758,87 @@ public class MeetingControllerTest {
     @Test
     @WithMockUser
     void getMeetingsByLocationAndRange_whenValidInputAndLocationExists_shouldReturn200OkAndListOfMeetings() throws Exception{
+        Long locationId = locationDTO1.id();
+        LocalDateTime rangeStart = DEFAULT_RANGE_START;
+        LocalDateTime rangeEnd = DEFAULT_RANGE_END;
+        List<MeetingDTO> expectedResults = List.of(meetingDTO1, meetingDTO2);
+        when(availabilityService.getMeetingsForLocationInRange(locationId, rangeStart, rangeEnd)).thenReturn(expectedResults);
 
+        ResultActions resultActions = meetingTestHelper.performGetMeetingsByLocationAndRange(locationId, rangeStart, rangeEnd);
+
+        meetingTestHelper.assertMeetingListResponse(resultActions, expectedResults);
+
+        verify(availabilityService).getMeetingsForLocationInRange(locationId, rangeStart, rangeEnd);
     }
 
     @Test
     @WithMockUser
     void getMeetingsByLocationAndRange_whenLocationNotFound_shouldReturn404NotFound() throws Exception{
+        Long nonExistentLocationId = 0L;
+        LocalDateTime rangeStart = DEFAULT_RANGE_START;
+        LocalDateTime rangeEnd = DEFAULT_RANGE_END;
+        String expectedErrorMessage = "Location not found with ID: " + nonExistentLocationId;
+        when(availabilityService.getMeetingsForLocationInRange(nonExistentLocationId, rangeStart, rangeEnd)).thenThrow(new EntityNotFoundException(expectedErrorMessage));
 
+        ResultActions resultActions = meetingTestHelper.performGetMeetingsByLocationAndRange(nonExistentLocationId, rangeStart, rangeEnd);
+
+        meetingTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
+
+        verify(availabilityService).getMeetingsForLocationInRange(nonExistentLocationId, rangeStart, rangeEnd);
     }
 
     @Test
     @WithMockUser
     void getMeetingsByLocationAndRange_whenMissingTimeParams_shouldReturn400BadRequest() throws Exception{
+        Long locationId = locationDTO1.id();
+        String expectedErrorMessage = "Required parameter 'start' of type 'LocalDateTime' is missing.";
 
+        ResultActions resultActions = mockMvc.perform(get("/api/meetings/byLocation/{id}", locationId)
+                .accept(MediaType.APPLICATION_JSON));
+
+        resultActions
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+                .andExpect(jsonPath("$.error", is("Missing Request Parameter")))
+                .andExpect(jsonPath("$.messages[0]", is(expectedErrorMessage)));
+
+        verify(availabilityService, never()).getMeetingsForLocationInRange(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
     }
 
     @Test
     @WithMockUser
     void getMeetingsByLocationAndRange_whenInvalidDateTimeFormat_shouldReturn400BadRequest() throws Exception{
+        Long locationId = locationDTO1.id();
+        String invalidDateTimeStr = "30-08-2025T10:00:00";
+        LocalDateTime rangeEnd = DEFAULT_RANGE_END;
+        String expectedErrorMessage = "Parameter 'start' should be of type 'LocalDateTime' but received value: '" + invalidDateTimeStr + "'.";
 
-    }
+        ResultActions resultActions = mockMvc.perform(get("/api/meetings/byLocation/{id}", locationId)
+                .param("start", invalidDateTimeStr)
+                .param("end", rangeEnd.toString())
+                .accept(MediaType.APPLICATION_JSON));
 
-    @Test
-    @WithMockUser
-    void getMeetingsByLocationAndRange_whenStartTimeAfterEndTime_shouldReturn400BadRequest() throws Exception{
+        meetingTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
 
+        verify(availabilityService, never()).getMeetingsForLocationInRange(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
     }
 
     @Test
     @WithMockUser
     void getMeetingsByLocationAndRange_whenLocationIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception{
+        String invalidId = "abc";
+        LocalDateTime rangeStart = DEFAULT_RANGE_START;
+        LocalDateTime rangeEnd = DEFAULT_RANGE_END;
+        String expectedErrorMessage = "Parameter 'locationId' should be of type 'Long' but received value: '" + invalidId + "'.";
 
+        ResultActions resultActions = mockMvc.perform(get("/api/meetings/byLocation/{id}", invalidId)
+                .param("start", rangeStart.toString())
+                .param("end", rangeEnd.toString())
+                .accept(MediaType.APPLICATION_JSON));
+
+        meetingTestHelper.assertParameterTypeError(resultActions, expectedErrorMessage);
+
+        verify(availabilityService, never()).getMeetingsForLocationInRange(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
     }
 
     // === END GET BY LOCATION ===
@@ -753,39 +848,135 @@ public class MeetingControllerTest {
     @Test
     @WithMockUser
     void findMeetingSuggestions_whenValidRequest_shouldReturn200OkAndListOfSuggestions() throws Exception{
+        Set<Long> attendeeIds = Set.of(attendeeDTO1.id(), attendeeDTO2.id());
+        Integer durationMinutes = 30;
+        LocalDate date = DEFAULT_DATE;
+        MeetingSuggestionRequestDTO requestDTO = new MeetingSuggestionRequestDTO(
+                attendeeIds,
+                durationMinutes,
+                date
+        );
 
+        DateTimeFormatter expectedJsonFormat = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+        List<LocationTimeSlotDTO> expectedResults = List.of(
+                new LocationTimeSlotDTO(
+                        locationDTO1,
+                        new AvailableSlotDTO(date.atTime(10, 0), date.atTime(11, 0))
+                ),
+                new LocationTimeSlotDTO(
+                        locationDTO2,
+                        new AvailableSlotDTO(date.atTime(11, 0), date.atTime(12, 30))
+                )
+        );
+        when(availabilityService.findMeetingSuggestions(requestDTO)).thenReturn(expectedResults);
+
+        ResultActions resultActions = meetingTestHelper.performFindMeetingSuggestions(requestDTO);
+
+        resultActions
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.length()", is(expectedResults.size())))
+                .andExpect(jsonPath("$[0].location.id", is(expectedResults.get(0).location().id().intValue())))
+                .andExpect(jsonPath("$[0].availableSlot.startTime", is(expectedResults.get(0).availableSlot().startTime().format(expectedJsonFormat))))
+                .andExpect(jsonPath("$[0].availableSlot.endTime", is(expectedResults.get(0).availableSlot().endTime().format(expectedJsonFormat))))
+                .andExpect(jsonPath("$[1].location.id", is(expectedResults.get(1).location().id().intValue())))
+                .andExpect(jsonPath("$[1].availableSlot.startTime", is(expectedResults.get(1).availableSlot().startTime().format(expectedJsonFormat))))
+                .andExpect(jsonPath("$[1].availableSlot.endTime", is(expectedResults.get(1).availableSlot().endTime().format(expectedJsonFormat))));
+
+        verify(availabilityService).findMeetingSuggestions(requestDTO);
     }
 
     static Stream<Arguments> invalidMeetingSuggestionsRequestProvider() {
 
-        /**
-         * attendeeIds is null or empty
-         *
-         * date is null
-         *
-         * durationMinutes is null
-         *
-         * durationMinutes less than min
-         *
-         * minimum capacity is less than min
-         */
+        Set<Long> validAttendeeIds = Set.of(1L, 2L);
+        Integer validDurationMinutes = 30;
+        LocalDate validDate = LocalDate.of(Year.now().getValue() + 1, 8, 14);
 
         return Stream.of(
-                Arguments.of()
+                Arguments.of(
+                        "AttendeeIds is null or empty",
+                        new MeetingSuggestionRequestDTO(null, validDurationMinutes, validDate),
+                        "attendeeIds",
+                        "Attendee list cannot be empty."
+                ),
+                Arguments.of(
+                        "Date is null",
+                        new MeetingSuggestionRequestDTO(validAttendeeIds, validDurationMinutes, null),
+                        "date",
+                        "A date must be provided."
+                ),
+                Arguments.of(
+                        "DurationMinutes is null",
+                        new MeetingSuggestionRequestDTO(validAttendeeIds, null, validDate),
+                        "durationMinutes",
+                        "Meeting duration cannot be empty."
+                ),
+                Arguments.of(
+                        "DurationMinutes less than min",
+                        new MeetingSuggestionRequestDTO(validAttendeeIds, 0, validDate),
+                        "durationMinutes",
+                        "Duration must me at least 1 minute."
+                )
         );
     }
 
     @ParameterizedTest(name = "Validation Error: {0}")
     @MethodSource("invalidMeetingSuggestionsRequestProvider")
     @WithMockUser
-    void findMeetingSuggestions_whenInvalidInput_shouldReturn400BadRequest() throws Exception{
+    void findMeetingSuggestions_whenInvalidInput_shouldReturn400BadRequest(
+            String testCaseDescription,
+            MeetingSuggestionRequestDTO invalidRequest,
+            String expectedErrorTarget,
+            String expectedErrorMessage
+    ) throws Exception{
+        ResultActions resultActions = meetingTestHelper.performFindMeetingSuggestions(invalidRequest);
 
+        meetingTestHelper.assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
+
+        verify(availabilityService, never()).findMeetingSuggestions(any());
     }
 
     @Test
     @WithMockUser
-    void findMeetingSuggestions_whenAnyAttendeeOrLocationNotFound_shouldReturn404NotFoundOrSpecificError() throws Exception{
+    void findMeetingSuggestions_whenInvalidDateFormatInRequest_shouldReturn400BadRequest() throws Exception {
+        String malformedJsonRequest = """
+                {
+                    "attendeeIds": "[1L, 2L]",
+                    "durationMinutes": "30",
+                    "date": "15-08-2024" // Invalid format (DD-MM-YYYY instead of YYYY-MM-DD)
+                }
+                """;
 
+        ResultActions resultActions = mockMvc.perform(post("/api/meetings/suggestions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(malformedJsonRequest)
+                .accept(MediaType.APPLICATION_JSON));
+
+        meetingTestHelper.assertMalformedRequestError(resultActions);
+
+        verify(availabilityService, never()).findMeetingSuggestions(any());
+    }
+
+    @Test
+    @WithMockUser
+    void findMeetingSuggestions_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception{
+        Long nonExistentAttendeeId = attendeeDTO1.id();
+        Integer durationMinutes = 30;
+        LocalDate date = DEFAULT_DATE;
+        MeetingSuggestionRequestDTO requestDTOWithNonExistentAttendee = new MeetingSuggestionRequestDTO(
+                Set.of(nonExistentAttendeeId),
+                durationMinutes,
+                date
+        );
+        String expectedErrorMessage = "Attendee not found with ID: " + nonExistentAttendeeId;
+        when(availabilityService.findMeetingSuggestions(any(MeetingSuggestionRequestDTO.class))).thenThrow(new EntityNotFoundException(expectedErrorMessage));
+
+        ResultActions resultActions = meetingTestHelper.performFindMeetingSuggestions(requestDTOWithNonExistentAttendee);
+
+        meetingTestHelper.assertNotFoundError(resultActions, expectedErrorMessage);
+
+        verify(availabilityService).findMeetingSuggestions(any(MeetingSuggestionRequestDTO.class));
     }
 
     // === END MEETING SUGGESTIONS ===
