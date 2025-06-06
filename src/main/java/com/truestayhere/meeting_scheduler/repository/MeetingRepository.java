@@ -58,5 +58,4 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     // SELECT m.id, m.title, m.startTime, m.endTime, m.location_id FROM meeting m WHERE m.location_id = ? AND m.startTime = ? AND m.endTime = ? ORDER BY m.startTime;
     List<Meeting> findByLocation_idAndStartTimeAndEndTime(Long location_id, LocalDateTime startTime, LocalDateTime endTime);
     // Returns List<> in case duplicates exist
-
 }
