@@ -156,7 +156,7 @@ public class MeetingControllerTest {
         verify(meetingService).createMeeting(any(CreateMeetingRequestDTO.class));
     }
 
-    static Stream<Arguments> invalidCreateRequestProvider() {
+    private static Stream<Arguments> invalidCreateRequestProvider() {
 
         String validTitle = "Meeting Title";
         String longTitle = "a".repeat(201);
@@ -401,7 +401,7 @@ public class MeetingControllerTest {
         verify(meetingService).updateMeeting(eq(meetingIdToUpdate), any(UpdateMeetingRequestDTO.class));
     }
 
-    static Stream<Arguments> partialUpdateMeetingRequestProvider() {
+    private static Stream<Arguments> partialUpdateMeetingRequestProvider() {
 
         String newTitle = "Updated Title";
         LocalDate date = LocalDate.of(Year.now().getValue() + 1, 8, 14);
@@ -461,7 +461,7 @@ public class MeetingControllerTest {
         verify(meetingService).updateMeeting(eq(meetingIdToUpdate), any(UpdateMeetingRequestDTO.class));
     }
 
-    static Stream<Arguments> invalidUpdateRequestProvider() {
+    private static Stream<Arguments> invalidUpdateRequestProvider() {
 
         String validTitle = "Meeting Title Updated";
         String longTitle = "a".repeat(201);
@@ -887,7 +887,7 @@ public class MeetingControllerTest {
         verify(availabilityService).findMeetingSuggestions(requestDTO);
     }
 
-    static Stream<Arguments> invalidMeetingSuggestionsRequestProvider() {
+    private static Stream<Arguments> invalidMeetingSuggestionsRequestProvider() {
 
         Set<Long> validAttendeeIds = Set.of(1L, 2L);
         Integer validDurationMinutes = 30;

@@ -73,7 +73,7 @@ public class AttendeeControllerTest {
 
     private AttendeeTestHelper attendeeTestHelper;
 
-    LocalDate DEFAULT_DATE = LocalDate.of(Year.now().getValue() + 1, 8, 14);
+    private final LocalDate DEFAULT_DATE = LocalDate.of(Year.now().getValue() + 1, 8, 14);
 
     private CreateAttendeeRequestDTO createRequest;
     private UpdateAttendeeRequestDTO updateRequest;
@@ -129,7 +129,7 @@ public class AttendeeControllerTest {
         verify(attendeeService).createAttendee(any(CreateAttendeeRequestDTO.class));
     }
 
-    static Stream<Arguments> invalidCreateRequestProvider() {
+    private static Stream<Arguments> invalidCreateRequestProvider() {
 
         String validName = "Attendee Name";
         String longName = "a".repeat(101);
@@ -406,7 +406,7 @@ public class AttendeeControllerTest {
         assertNull(dtoCaptor.getValue().email(), "Email in the DTO passed to service should be null.");
     }
 
-    static Stream<Arguments> invalidUpdateRequestProvider() {
+    private static Stream<Arguments> invalidUpdateRequestProvider() {
 
         String validName = "Attendee Name Updated";
         String longName = "a".repeat(101);
@@ -729,7 +729,7 @@ public class AttendeeControllerTest {
         verify(availabilityService).getCommonAttendeeAvailability(requestDTO);
     }
 
-    static Stream<Arguments> invalidCommonAvailabilityRequestProvider() {
+    private static Stream<Arguments> invalidCommonAvailabilityRequestProvider() {
 
         Set<Long> validAttendeeIds = Set.of(1L, 2L);
         Set<Long> attendeeIdsWithNullElement = new HashSet<>();

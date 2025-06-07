@@ -124,7 +124,7 @@ public class LocationControllerTest {
     }
 
 
-    static Stream<Arguments> invalidCreateRequestProvider() {
+    private static Stream<Arguments> invalidCreateRequestProvider() {
 
         String validName = "Room 1";
         String longName = "a".repeat(151);
@@ -313,7 +313,7 @@ public class LocationControllerTest {
         verify(locationService).updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class));
     }
 
-    static Stream<Arguments> invalidUpdateRequestProvider() {
+    private static Stream<Arguments> invalidUpdateRequestProvider() {
 
         String validName = "Room 1";
         String longName = "a".repeat(151);
@@ -711,7 +711,7 @@ public class LocationControllerTest {
         verify(availabilityService).getAvailabilityForLocationsByDuration(requestDTOWithNullCapacity);
     }
 
-    static Stream<Arguments> invalidLocationAvailabilityRequestProvider() {
+    private static Stream<Arguments> invalidLocationAvailabilityRequestProvider() {
         LocalDate validDate = LocalDate.of(Year.now().getValue() + 1, 8, 15);
         int validDuration = 60;
         Integer validMinCapacity = 5;

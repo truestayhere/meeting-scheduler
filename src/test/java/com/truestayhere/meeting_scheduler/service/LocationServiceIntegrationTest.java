@@ -15,6 +15,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -35,6 +36,8 @@ public class LocationServiceIntegrationTest extends AbstractIntegrationTest {
     private AttendeeRepository attendeeRepository;
     @Autowired
     private MeetingRepository meetingRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
@@ -255,7 +258,7 @@ public class LocationServiceIntegrationTest extends AbstractIntegrationTest {
         Attendee attendee = new Attendee(
                 "Attendee Name",
                 "attendeename@test.com",
-                "hashedPassword",
+                passwordEncoder.encode("password"),
                 "ROLE_USER"
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));

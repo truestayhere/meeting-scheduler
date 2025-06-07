@@ -15,6 +15,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -35,6 +36,8 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
     private LocationRepository locationRepository;
     @Autowired
     private MeetingRepository meetingRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
@@ -73,7 +76,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         Attendee attendee = new Attendee(
                 "Attendee Name",
                 duplicateEmail,
-                "hashedPassword",
+                passwordEncoder.encode("password"),
                 "ROLE_USER"
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
@@ -107,7 +110,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         Attendee attendee1 = new Attendee(
                 "Attendee One",
                 "attendeeone@test.com",
-                "hashedPassword",
+                passwordEncoder.encode("password"),
                 "ROLE_USER"
         );
         attendee1.setWorkingStartTime(LocalTime.of(7, 30));
@@ -115,7 +118,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         Attendee attendee2 = new Attendee(
                 "Attendee Two",
                 "attendeetwo@test.com",
-                "hashedPassword",
+                passwordEncoder.encode("password"),
                 "ROLE_USER"
         );
         attendee2.setWorkingStartTime(LocalTime.of(7, 30));
@@ -161,7 +164,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         Attendee attendee = new Attendee(
                 "Attendee Name",
                 "attendeename@test.com",
-                "hashedPassword",
+                passwordEncoder.encode("password"),
                 "ROLE_USER"
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
@@ -220,7 +223,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         Attendee attendee = new Attendee(
                 "Attendee Name",
                 "attendeename@test.com",
-                "hashedPassword",
+                passwordEncoder.encode("password"),
                 "ROLE_USER"
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
@@ -231,7 +234,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         Attendee conflictingAttendee = new Attendee(
                 "Attendee Name",
                 duplicateEmail,
-                "hashedPassword",
+                passwordEncoder.encode("password"),
                 "ROLE_USER"
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
@@ -266,7 +269,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         Attendee attendee = new Attendee(
                 "Attendee Name",
                 "attendeename@test.com",
-                "hashedPassword",
+                passwordEncoder.encode("password"),
                 "ROLE_USER"
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
@@ -302,7 +305,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         Attendee attendee = new Attendee(
                 "Attendee Name",
                 "attendeename@test.com",
-                "hashedPassword",
+                passwordEncoder.encode("password"),
                 "ROLE_USER"
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
