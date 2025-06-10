@@ -42,6 +42,9 @@ public class Meeting {
     )
     private Set<Attendee> attendees = new HashSet<>(); // Avoiding duplicate attendees
 
+    @Version
+    private Integer version;
+
     public Meeting(String title, LocalDateTime startTime, LocalDateTime endTime, Location location) {
         this.title = title;
         this.startTime = startTime;

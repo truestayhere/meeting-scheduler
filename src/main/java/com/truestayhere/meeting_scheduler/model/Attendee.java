@@ -45,6 +45,9 @@ public class Attendee {
     @ManyToMany(mappedBy = "attendees")
     private Set<Meeting> meetings = new HashSet<>();
 
+    @Version
+    private Integer version;
+
     // Lombok does empty constructor, getters and setters
 
     public Attendee(String name, String email, String password) {

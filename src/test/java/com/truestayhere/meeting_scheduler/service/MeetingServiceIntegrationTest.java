@@ -19,8 +19,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -30,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -550,4 +551,108 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
         assertThat(thrownException.getMessage()).isEqualTo(expectedErrorMessage);
     }
 
+
+    // Concurrent updates testing
+
+    // Optimistic locking test (Repository Level)
+    // Note: Service-level optimistic locking tests aren't needed because
+    // @Transactional methods always fetch fresh data
+    @Test
+    void shouldThrowOptimisticLockingException_whenUpdatingStaleMeeting() {
+        Meeting initialMeeting = new Meeting(
+                "Initial Meeting",
+                DEFAULT_TIME,
+                DEFAULT_TIME.plusHours(1),
+                location1
+        );
+        initialMeeting.addAttendee(attendee1);
+        Meeting savedoInitialMeeting = meetingRepository.save(initialMeeting);
+        Long meetingId = savedoInitialMeeting.getId();
+
+        // User 1 and User 2 fetch the meeting at the same time
+        Meeting meetingUser1 = meetingRepository.findById(meetingId).orElseThrow();
+        Meeting meetingUser2 = meetingRepository.findById(meetingId).orElseThrow();
+
+        // Version must be 0 for both users
+        assertThat(meetingUser1.getVersion()).isEqualTo(0);
+        assertThat(meetingUser2.getVersion()).isEqualTo(0);
+
+        // First user updates the meeting
+        meetingUser1.setTitle("Updated by User 1");
+        meetingRepository.saveAndFlush(meetingUser1);
+
+        // The meeting version must be 1 now
+        Meeting updatedMeeting = meetingRepository.findById(meetingId).orElseThrow();
+        assertThat(updatedMeeting.getVersion()).isEqualTo(1);
+        assertThat(updatedMeeting.getTitle()).isEqualTo("Updated by User 1");
+
+        // User 2 attempts to update the meeting
+        meetingUser2.setTitle("Updated by User 2");
+
+        // The update should fail for User 2
+        assertThrows(ObjectOptimisticLockingFailureException.class, () -> {
+            meetingRepository.saveAndFlush(meetingUser2);
+        });
+
+    }
+
+    @Test
+    void shouldPreserveBothUpdates_whenUsersUpdateDifferentFields() {
+        CreateMeetingRequestDTO createRequest = new CreateMeetingRequestDTO(
+                "Meeting Title",
+                DEFAULT_TIME.plusHours(2),
+                DEFAULT_TIME.plusHours(3),
+                location1.getId(),
+                Set.of(attendee1.getId())
+        );
+        MeetingDTO initialMeeting = meetingService.createMeeting(createRequest);
+        Long meetingId = initialMeeting.id();
+
+        // Update 1
+        UpdateMeetingRequestDTO titleUpdate = new UpdateMeetingRequestDTO(
+                "Meeting Title Updated", null, null, null, null
+        );
+        meetingService.updateMeeting(meetingId, titleUpdate);
+
+        // Update 2
+        UpdateMeetingRequestDTO attendeeUpdate = new UpdateMeetingRequestDTO(
+                null, null, null, null, Set.of(attendee1.getId(), attendee2.getId())
+        );
+        meetingService.updateMeeting(meetingId, attendeeUpdate);
+
+        // BOTH changes should succeed
+        MeetingDTO finalMeeting = meetingService.getMeetingById(meetingId);
+        assertThat(finalMeeting.title()).isEqualTo("Meeting Title Updated");
+        assertThat(finalMeeting.attendees())
+                .extracting("id").
+                containsExactlyInAnyOrder(
+                attendee1.getId(), attendee2.getId()
+        );
+    }
+
+    @Test
+    void shouldHandleRapidMultipleUpdates_withoutDataLoss() {
+        CreateMeetingRequestDTO createRequest = new CreateMeetingRequestDTO(
+                "Meeting Title",
+                DEFAULT_TIME.plusHours(2),
+                DEFAULT_TIME.plusHours(3),
+                location1.getId(),
+                Set.of(attendee1.getId())
+        );
+        MeetingDTO initialMeeting = meetingService.createMeeting(createRequest);
+        Long meetingId = initialMeeting.id();
+
+        List<String> titles = List.of("Update 1", "Update 2", "Update 3", "Final Update");
+
+        for (String title : titles) {
+            UpdateMeetingRequestDTO update = new UpdateMeetingRequestDTO(
+                    title, null, null, null, null
+            );
+            assertDoesNotThrow(() -> meetingService.updateMeeting(meetingId, update));
+        }
+
+        // The final state should reflect the last update
+        MeetingDTO finalMeeting = meetingService.getMeetingById(meetingId);
+        assertThat(finalMeeting.title()).isEqualTo("Final Update");
+    }
 }

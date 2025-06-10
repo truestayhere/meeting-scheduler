@@ -2,8 +2,11 @@ package com.truestayhere.meeting_scheduler.service;
 
 import com.truestayhere.meeting_scheduler.AbstractIntegrationTest;
 import com.truestayhere.meeting_scheduler.dto.request.CreateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.CreateMeetingRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.request.UpdateLocationRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.UpdateMeetingRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
+import com.truestayhere.meeting_scheduler.dto.response.MeetingDTO;
 import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.model.Location;
@@ -15,6 +18,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
@@ -22,8 +26,10 @@ import java.time.LocalTime;
 import java.time.Year;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class LocationServiceIntegrationTest extends AbstractIntegrationTest {
@@ -291,5 +297,102 @@ public class LocationServiceIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(thrownException.getMessage()).isEqualTo(expectedErrorMessage);
         assertThat(locationRepository.findById(locationIdToDelete)).isPresent();
+    }
+
+    // Concurrent updates testing
+
+    // Optimistic locking test (Repository Level)
+    // Note: Service-level optimistic locking tests aren't needed because
+    // @Transactional methods always fetch fresh data
+    @Test
+    void shouldThrowOptimisticLockingException_whenUpdatingStaleMeeting() {
+
+        Location initialLocation = new Location(
+                "Initial Location",
+                10
+        );
+        initialLocation.setWorkingStartTime(LocalTime.of(9, 0));
+        initialLocation.setWorkingEndTime(LocalTime.of(17, 0));
+        Location savedInitialLocation = locationRepository.save(initialLocation);
+        Long locationId = savedInitialLocation.getId();
+
+        // User 1 and User 2 fetch the location at the same time
+        Location locationUser1 = locationRepository.findById(locationId).orElseThrow();
+        Location locationUser2 = locationRepository.findById(locationId).orElseThrow();
+
+        // Version must be 0 for both users
+        assertThat(locationUser1.getVersion()).isEqualTo(0);
+        assertThat(locationUser2.getVersion()).isEqualTo(0);
+
+        // First user updates the location
+        locationUser1.setName("Updated by User 1");
+        locationRepository.saveAndFlush(locationUser1);
+
+        // The location version must be 1 now
+        Location updatedLocation = locationRepository.findById(locationId).orElseThrow();
+        assertThat(updatedLocation.getVersion()).isEqualTo(1);
+        assertThat(updatedLocation.getName()).isEqualTo("Updated by User 1");
+
+        // User 2 attempts to update the location
+        locationUser2.setName("Updated by User 2");
+
+        // The update should fail for User 2
+        assertThrows(ObjectOptimisticLockingFailureException.class, () -> {
+            locationRepository.saveAndFlush(locationUser2);
+        });
+    }
+
+    @Test
+    void shouldPreserveBothUpdates_whenUsersUpdateDifferentFields() {
+        CreateLocationRequestDTO createRequest = new CreateLocationRequestDTO(
+                "Location Name",
+                3,
+                LocalTime.of(9, 0),
+                LocalTime.of(17, 0)
+        );
+        LocationDTO initialLocation = locationService.createLocation(createRequest);
+        Long locationId = initialLocation.id();
+
+        // Update 1
+        UpdateLocationRequestDTO titleUpdate = new UpdateLocationRequestDTO(
+                "Location Name Updated", null, null, null
+        );
+        locationService.updateLocation(locationId, titleUpdate);
+
+        // Update 2
+        UpdateLocationRequestDTO capacityUpdate = new UpdateLocationRequestDTO(
+                null, 20, null, null
+        );
+        locationService.updateLocation(locationId, capacityUpdate);
+
+        // BOTH changes should succeed
+        LocationDTO finalLocation = locationService.getLocationById(locationId);
+        assertThat(finalLocation.name()).isEqualTo("Location Name Updated");
+        assertThat(finalLocation.capacity()).isEqualTo(20);
+    }
+
+    @Test
+    void shouldHandleRapidMultipleUpdates_withoutDataLoss() {
+        CreateLocationRequestDTO createRequest = new CreateLocationRequestDTO(
+                "Location Name",
+                3,
+                LocalTime.of(9, 0),
+                LocalTime.of(17, 0)
+        );
+        LocationDTO initialLocation = locationService.createLocation(createRequest);
+        Long locationId = initialLocation.id();
+
+        List<String> names = List.of("Update 1", "Update 2", "Update 3", "Final Update");
+
+        for (String name : names) {
+            UpdateLocationRequestDTO nameUpdate = new UpdateLocationRequestDTO(
+                    name, null, null, null
+            );
+            assertDoesNotThrow(() -> locationService.updateLocation(locationId, nameUpdate));
+        }
+
+        // The final state should reflect the last update
+        LocationDTO finalLocation = locationService.getLocationById(locationId);
+        assertThat(finalLocation.name()).isEqualTo("Final Update");
     }
 }

@@ -31,6 +31,9 @@ public class Location {
     @Column(name = "working_end_time")
     private LocalTime workingEndTime;
 
+    @Version
+    private Integer version;
+
     public Location(String name, int capacity) {
         this.name = name;
         this.capacity = capacity;

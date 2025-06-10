@@ -9,6 +9,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -278,6 +279,23 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT); // 409 CONFLICT
     }
 
+    // Handles exceptions thrown when a concurrent update is attempted on the same entity. This is a result of optimistic locking.
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponseDTO> handleOptimisticLockingFailure(
+            ObjectOptimisticLockingFailureException ex, HttpServletRequest request) {
+
+        String message = "The resource you were trying to save has been updated by another user. Please refresh and try again.";
+
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                message,
+                request.getRequestURI()
+        );
+
+        log.warn("Optimistic locking conflict detected: {}", ex.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT); // 409 CONFLICT
+    }
 
     // Handler for any other unhandled exceptions
     @ExceptionHandler(Exception.class)
