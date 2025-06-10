@@ -11,8 +11,8 @@ import org.springframework.test.web.servlet.ResultActions;
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.is;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * Specific helper for Location controller tests
@@ -79,9 +79,9 @@ public class LocationTestHelper extends MockMvcTestHelper {
         for (int i = 0; i < expected.size(); i++) {
             LocationDTO location = expected.get(i);
             resultActions
-                    .andExpect(jsonPath("$["+ i + "].id", is(location.id().intValue())))
-                    .andExpect(jsonPath("$["+ i + "].name", is(location.name())))
-                    .andExpect(jsonPath("$["+ i + "].capacity", is(location.capacity())));
+                    .andExpect(jsonPath("$[" + i + "].id", is(location.id().intValue())))
+                    .andExpect(jsonPath("$[" + i + "].name", is(location.name())))
+                    .andExpect(jsonPath("$[" + i + "].capacity", is(location.capacity())));
         }
     }
 

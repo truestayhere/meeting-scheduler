@@ -13,7 +13,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS) // mvn test crashes without this for some reason (change later)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+// mvn test crashes without this for some reason (change later)
 public class AbstractIntegrationTest {
 
     @Container

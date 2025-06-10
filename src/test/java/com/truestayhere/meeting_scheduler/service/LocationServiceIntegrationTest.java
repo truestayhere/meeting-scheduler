@@ -2,11 +2,8 @@ package com.truestayhere.meeting_scheduler.service;
 
 import com.truestayhere.meeting_scheduler.AbstractIntegrationTest;
 import com.truestayhere.meeting_scheduler.dto.request.CreateLocationRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.request.CreateMeetingRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.request.UpdateLocationRequestDTO;
-import com.truestayhere.meeting_scheduler.dto.request.UpdateMeetingRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.LocationDTO;
-import com.truestayhere.meeting_scheduler.dto.response.MeetingDTO;
 import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.model.Location;
@@ -26,7 +23,6 @@ import java.time.LocalTime;
 import java.time.Year;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -199,7 +195,7 @@ public class LocationServiceIntegrationTest extends AbstractIntegrationTest {
         location.setWorkingStartTime(LocalTime.of(8, 0));
         location.setWorkingEndTime(LocalTime.of(18, 0));
         Location locationToUpdate = locationRepository.save(location);
-        Long locationIdToUpdate  = locationToUpdate.getId();
+        Long locationIdToUpdate = locationToUpdate.getId();
 
         Location conflictingLocation = new Location(duplicateName, 10);
         location.setWorkingStartTime(LocalTime.of(8, 0));

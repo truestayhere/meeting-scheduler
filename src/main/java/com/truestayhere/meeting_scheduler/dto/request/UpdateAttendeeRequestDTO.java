@@ -2,7 +2,6 @@ package com.truestayhere.meeting_scheduler.dto.request;
 
 import com.truestayhere.meeting_scheduler.dto.validation.ValidWorkingHours;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalTime;

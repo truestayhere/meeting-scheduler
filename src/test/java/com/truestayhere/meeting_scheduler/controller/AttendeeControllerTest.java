@@ -55,6 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({GlobalExceptionHandler.class, SecurityConfig.class})
 public class AttendeeControllerTest {
 
+    private final LocalDate DEFAULT_DATE = LocalDate.of(Year.now().getValue() + 1, 8, 14);
     @MockitoBean
     AttendeeService attendeeService;
     @MockitoBean
@@ -65,20 +66,14 @@ public class AttendeeControllerTest {
     JwtDecoder jwtDecoder;
     @MockitoBean
     UserDetailsService userDetailsService;
-
     @Autowired
     private MockMvc mockMvc;
     @Autowired
     private ObjectMapper objectMapper;
-
     private AttendeeTestHelper attendeeTestHelper;
-
-    private final LocalDate DEFAULT_DATE = LocalDate.of(Year.now().getValue() + 1, 8, 14);
-
     private CreateAttendeeRequestDTO createRequest;
     private UpdateAttendeeRequestDTO updateRequest;
     private AttendeeDTO attendeeDTO1, attendeeDTO2;
-
 
     @BeforeEach
     void setUp() {
@@ -113,20 +108,6 @@ public class AttendeeControllerTest {
                 LocalTime.of(10, 0),
                 LocalTime.of(18, 0)
         );
-    }
-
-    // === CREATE ===
-
-    @Test
-    @WithMockUser
-    void createAttendee_whenValidInput_shouldReturn201CreatedAndAttendeeResponse() throws Exception {
-        when(attendeeService.createAttendee(any(CreateAttendeeRequestDTO.class))).thenReturn(attendeeDTO1);
-
-        ResultActions resultActions = attendeeTestHelper.performCreateAttendee(createRequest);
-
-        attendeeTestHelper.assertCreatedAttendeeResponse(resultActions, attendeeDTO1);
-
-        verify(attendeeService).createAttendee(any(CreateAttendeeRequestDTO.class));
     }
 
     private static Stream<Arguments> invalidCreateRequestProvider() {
@@ -193,6 +174,98 @@ public class AttendeeControllerTest {
                         "Working start time and end time cannot be the same."
                 )
         );
+    }
+
+    private static Stream<Arguments> invalidUpdateRequestProvider() {
+
+        String validName = "Attendee Name Updated";
+        String longName = "a".repeat(101);
+        String validEmail = "validupdated@test.com";
+        String longEmail = "a".repeat(64) + "@" + "b".repeat(36) + ".com";
+        String invalidEmail = "invalidEmailFormat";
+        String validPassword = "validUpdatedRawPassword";
+        String shortPassword = "a".repeat(7);
+        String validRole = "ROLE_USER";
+        LocalTime validStartTime = LocalTime.of(10, 0);
+        LocalTime validEndTime = LocalTime.of(18, 0);
+        LocalTime sameTime = LocalTime.of(10, 0);
+
+        return Stream.of(
+                Arguments.of(
+                        "Name longer than max",
+                        new UpdateAttendeeRequestDTO(longName, validEmail, validPassword, validRole, validStartTime, validEndTime),
+                        "name",
+                        "Attendee name cannot exceed 100 characters."
+                ),
+                Arguments.of(
+                        "Email longer that max",
+                        new UpdateAttendeeRequestDTO(validName, longEmail, validPassword, validRole, validStartTime, validEndTime),
+                        "email",
+                        "Email cannot exceed 100 characters."
+                ),
+                Arguments.of(
+                        "Email is invalid format",
+                        new UpdateAttendeeRequestDTO(validName, invalidEmail, validPassword, validRole, validStartTime, validEndTime),
+                        "email",
+                        "Invalid email format."
+                ),
+                Arguments.of(
+                        "Password is less than min",
+                        new UpdateAttendeeRequestDTO(validName, validEmail, shortPassword, validRole, validStartTime, validEndTime),
+                        "password",
+                        "Password must be at leat 8 characters long."
+                ),
+                Arguments.of(
+                        "Working start time equals end time",
+                        new UpdateAttendeeRequestDTO(validName, validEmail, validPassword, validRole, sameTime, sameTime),
+                        "updateAttendeeRequestDTO",
+                        "Working start time and end time cannot be the same."
+                )
+        );
+    }
+
+    private static Stream<Arguments> invalidCommonAvailabilityRequestProvider() {
+
+        Set<Long> validAttendeeIds = Set.of(1L, 2L);
+        Set<Long> attendeeIdsWithNullElement = new HashSet<>();
+        attendeeIdsWithNullElement.add(1L);
+        attendeeIdsWithNullElement.add(null);
+        LocalDate validDate = LocalDate.of(Year.now().getValue() + 1, 8, 14);
+
+        return Stream.of(
+                Arguments.of(
+                        "AttendeeIds is null/empty",
+                        new CommonAvailabilityRequestDTO(Set.of(), validDate),
+                        "attendeeIds",
+                        "At least one attendee ID must be provided."
+                ),
+                Arguments.of(
+                        "AttendeeIds contains a null element",
+                        new CommonAvailabilityRequestDTO(attendeeIdsWithNullElement, validDate),
+                        "attendeeIds[]",
+                        "must not be null"
+                ),
+                Arguments.of(
+                        "Date is null",
+                        new CommonAvailabilityRequestDTO(validAttendeeIds, null),
+                        "date",
+                        "A date must be provided."
+                )
+        );
+    }
+
+    // === CREATE ===
+
+    @Test
+    @WithMockUser
+    void createAttendee_whenValidInput_shouldReturn201CreatedAndAttendeeResponse() throws Exception {
+        when(attendeeService.createAttendee(any(CreateAttendeeRequestDTO.class))).thenReturn(attendeeDTO1);
+
+        ResultActions resultActions = attendeeTestHelper.performCreateAttendee(createRequest);
+
+        attendeeTestHelper.assertCreatedAttendeeResponse(resultActions, attendeeDTO1);
+
+        verify(attendeeService).createAttendee(any(CreateAttendeeRequestDTO.class));
     }
 
     @ParameterizedTest(name = "Validation Error: {0}")
@@ -404,54 +477,6 @@ public class AttendeeControllerTest {
         ArgumentCaptor<UpdateAttendeeRequestDTO> dtoCaptor = ArgumentCaptor.forClass(UpdateAttendeeRequestDTO.class);
         verify(attendeeService).updateAttendee(eq(attendeeIdToUpdate), dtoCaptor.capture());
         assertNull(dtoCaptor.getValue().email(), "Email in the DTO passed to service should be null.");
-    }
-
-    private static Stream<Arguments> invalidUpdateRequestProvider() {
-
-        String validName = "Attendee Name Updated";
-        String longName = "a".repeat(101);
-        String validEmail = "validupdated@test.com";
-        String longEmail = "a".repeat(64) + "@" + "b".repeat(36) + ".com";
-        String invalidEmail = "invalidEmailFormat";
-        String validPassword = "validUpdatedRawPassword";
-        String shortPassword = "a".repeat(7);
-        String validRole = "ROLE_USER";
-        LocalTime validStartTime = LocalTime.of(10, 0);
-        LocalTime validEndTime = LocalTime.of(18, 0);
-        LocalTime sameTime = LocalTime.of(10, 0);
-
-        return Stream.of(
-                Arguments.of(
-                        "Name longer than max",
-                        new UpdateAttendeeRequestDTO(longName, validEmail, validPassword, validRole, validStartTime, validEndTime),
-                        "name",
-                        "Attendee name cannot exceed 100 characters."
-                ),
-                Arguments.of(
-                        "Email longer that max",
-                        new UpdateAttendeeRequestDTO(validName, longEmail, validPassword, validRole, validStartTime, validEndTime),
-                        "email",
-                        "Email cannot exceed 100 characters."
-                ),
-                Arguments.of(
-                        "Email is invalid format",
-                        new UpdateAttendeeRequestDTO(validName, invalidEmail, validPassword, validRole, validStartTime, validEndTime),
-                        "email",
-                        "Invalid email format."
-                ),
-                Arguments.of(
-                        "Password is less than min",
-                        new UpdateAttendeeRequestDTO(validName, validEmail, shortPassword, validRole, validStartTime, validEndTime),
-                        "password",
-                        "Password must be at leat 8 characters long."
-                ),
-                Arguments.of(
-                        "Working start time equals end time",
-                        new UpdateAttendeeRequestDTO(validName, validEmail, validPassword, validRole, sameTime, sameTime),
-                        "updateAttendeeRequestDTO",
-                        "Working start time and end time cannot be the same."
-                )
-        );
     }
 
     @ParameterizedTest(name = "Validation Error: {0}")
@@ -727,36 +752,6 @@ public class AttendeeControllerTest {
                 .andExpect(jsonPath("$[1].endTime", is(expectedSlots.get(1).endTime().format(expectedJsonFormat))));
 
         verify(availabilityService).getCommonAttendeeAvailability(requestDTO);
-    }
-
-    private static Stream<Arguments> invalidCommonAvailabilityRequestProvider() {
-
-        Set<Long> validAttendeeIds = Set.of(1L, 2L);
-        Set<Long> attendeeIdsWithNullElement = new HashSet<>();
-        attendeeIdsWithNullElement.add(1L);
-        attendeeIdsWithNullElement.add(null);
-        LocalDate validDate = LocalDate.of(Year.now().getValue() + 1, 8, 14);
-
-        return Stream.of(
-                Arguments.of(
-                        "AttendeeIds is null/empty",
-                        new CommonAvailabilityRequestDTO(Set.of(), validDate),
-                        "attendeeIds",
-                        "At least one attendee ID must be provided."
-                ),
-                Arguments.of(
-                        "AttendeeIds contains a null element",
-                        new CommonAvailabilityRequestDTO(attendeeIdsWithNullElement, validDate),
-                        "attendeeIds[]",
-                        "must not be null"
-                ),
-                Arguments.of(
-                        "Date is null",
-                        new CommonAvailabilityRequestDTO(validAttendeeIds, null),
-                        "date",
-                        "A date must be provided."
-                )
-        );
     }
 
     @ParameterizedTest(name = "Validation Error: {0}")

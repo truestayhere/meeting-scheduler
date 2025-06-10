@@ -10,9 +10,9 @@ import org.springframework.test.web.servlet.ResultActions;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.function.Function;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -119,14 +119,6 @@ public class MockMvcTestHelper {
     }
 
     /**
-     * Functional interface for entity validation
-     */
-    @FunctionalInterface
-    public interface EntityValidator<T> {
-        void validate(ResultActions resultActions, T expected) throws Exception;
-    }
-
-    /**
      * Asserts successful response
      */
     public <T> void assertEntityResponse(ResultActions resultActions, T expected,
@@ -154,8 +146,6 @@ public class MockMvcTestHelper {
         validator.validate(resultActions, expected);
     }
 
-    // === ERROR RESPONSE ASSERTIONS ===
-
     /**
      * Generic error response assertion
      */
@@ -168,6 +158,8 @@ public class MockMvcTestHelper {
                 .andExpect(jsonPath("$.error", is(expectedError)))
                 .andExpect(jsonPath("$.messages[0]", is(expectedMessage)));
     }
+
+    // === ERROR RESPONSE ASSERTIONS ===
 
     /**
      * Asserts validation error (400)
@@ -213,5 +205,13 @@ public class MockMvcTestHelper {
                 .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
                 .andExpect(jsonPath("$.error", containsString("Malformed Request Body")))
                 .andExpect(jsonPath("$.messages[0]", containsString("Request body is malformed or contains invalid data/format.")));
+    }
+
+    /**
+     * Functional interface for entity validation
+     */
+    @FunctionalInterface
+    public interface EntityValidator<T> {
+        void validate(ResultActions resultActions, T expected) throws Exception;
     }
 }

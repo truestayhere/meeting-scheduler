@@ -33,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest {
 
+    private final LocalDate DEFAULT_DATE = LocalDate.of(Year.now().getValue() + 1, 8, 14);
     @Autowired
     private LocationRepository locationRepository;
     @Autowired
@@ -45,11 +46,8 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
     private AvailabilityService availabilityService;
     @Autowired
     private PasswordEncoder passwordEncoder;
-
     private Location location1, location2; // capacity 10, works 9-17; capacity 2, works 10-18
     private Attendee attendee1, attendee2, attendee3; // works 9-17, works 9-17, works 10-18
-
-    private final LocalDate DEFAULT_DATE = LocalDate.of(Year.now().getValue() + 1, 8, 14);
 
     @BeforeEach
     void setUp() {
@@ -456,7 +454,7 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
 
     @Test
     void getCommonAttendeeAvailability_shouldReturnIntersection_withMeetings() {
-        LocalDateTime meetingStart = DEFAULT_DATE.atTime(11,0);
+        LocalDateTime meetingStart = DEFAULT_DATE.atTime(11, 0);
         LocalDateTime meetingEnd = DEFAULT_DATE.atTime(12, 0);
         createMeetingForAttendee(attendee1.getId(), meetingStart, meetingEnd);
 
@@ -543,7 +541,7 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
         assertThat(location1Slot.availableSlot().endTime()).isEqualTo(location1.getWorkingEndTime().atDate(DEFAULT_DATE));
 
         assertThat(location2Slot.availableSlot().startTime()).isEqualTo(location2.getWorkingStartTime().atDate(DEFAULT_DATE));
-        assertThat(location2Slot.availableSlot().endTime()).isEqualTo(DEFAULT_DATE.atTime(17,0));
+        assertThat(location2Slot.availableSlot().endTime()).isEqualTo(DEFAULT_DATE.atTime(17, 0));
     }
 
     @Test
@@ -656,7 +654,7 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
 
     @Test
     void findMeetingSuggestions_shouldReturnEmptyList_whenRequestedDurationIsTooLong() {
-        LocalDateTime meetingStart = DEFAULT_DATE.atTime(10,0);
+        LocalDateTime meetingStart = DEFAULT_DATE.atTime(10, 0);
         LocalDateTime meetingEnd = DEFAULT_DATE.atTime(17, 0);
 
         // Common free time 9-10
@@ -727,7 +725,7 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
     }
 
     private Meeting createMeetingForAttendeesAtLocation(List<Long> attendeeIds, Long locationId,
-                                                          LocalDateTime startTime, LocalDateTime endTime) {
+                                                        LocalDateTime startTime, LocalDateTime endTime) {
         Meeting meeting = new Meeting();
         meeting.setTitle("Test Meeting with Multiple Attendees");
         meeting.setStartTime(startTime);

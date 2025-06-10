@@ -11,7 +11,6 @@ import com.truestayhere.meeting_scheduler.model.Meeting;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import com.truestayhere.meeting_scheduler.repository.LocationRepository;
 import com.truestayhere.meeting_scheduler.repository.MeetingRepository;
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,12 +29,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
 
+    private final LocalDateTime DEFAULT_TIME = LocalDateTime.of(Year.now().getValue() + 1, 8, 15, 10, 0);
     @Autowired
     private MeetingService meetingService;
     @Autowired
@@ -46,9 +46,6 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
     private AttendeeRepository attendeeRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    private final LocalDateTime DEFAULT_TIME = LocalDateTime.of(Year.now().getValue() + 1, 8, 15, 10, 0);
-
     private Location location1, location2;
     private Attendee attendee1, attendee2, attendee3;
     private Meeting meeting1, meeting2;
@@ -109,57 +106,6 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
         meeting2.addAttendee(attendee2);
         meetingRepository.saveAll(List.of(meeting1, meeting2));
     }
-
-    // Receives test context and populates request
-    @FunctionalInterface
-    public interface TestSetupCallback<T> {
-        T build(TestEntityContext context);
-    }
-
-    // Test context (for ParameterizedTest)
-    public record TestEntityContext(
-            Long location1Id,
-            Long location2Id,
-            Long attendee1Id,
-            Long attendee2Id,
-            Long attendee3Id) { }
-
-    // Create Operations
-
-    @Test
-    void shouldCreateMeetingSuccessfully() {
-
-        CreateMeetingRequestDTO requestDTO = new CreateMeetingRequestDTO(
-                "Meeting title",
-                DEFAULT_TIME.plusHours(2),
-                DEFAULT_TIME.plusHours(3),
-                location1.getId(),
-                Set.of(attendee1.getId())
-        );
-
-        MeetingDTO createdMeetingDTO = meetingService.createMeeting(requestDTO);
-        assertThat(createdMeetingDTO).isNotNull();
-        assertThat(createdMeetingDTO.title()).isEqualTo(requestDTO.title());
-        assertThat(createdMeetingDTO.startTime()).isEqualTo(requestDTO.startTime());
-        assertThat(createdMeetingDTO.endTime()).isEqualTo(requestDTO.endTime());
-        assertThat(createdMeetingDTO.location().id()).isEqualTo(requestDTO.locationId());
-        assertThat(createdMeetingDTO.attendees()).hasSize(1);
-        assertThat(createdMeetingDTO.attendees())
-                .extracting("id")
-                .containsExactlyInAnyOrder(attendee1.getId());
-
-        Long meetingId = createdMeetingDTO.id();
-        MeetingDTO verificationMeetingDTO = meetingService.getMeetingById(meetingId);
-        assertThat(verificationMeetingDTO.title()).isEqualTo(requestDTO.title());
-        assertThat(verificationMeetingDTO.startTime()).isEqualTo(requestDTO.startTime());
-        assertThat(verificationMeetingDTO.endTime()).isEqualTo(requestDTO.endTime());
-        assertThat(verificationMeetingDTO.location().id()).isEqualTo(requestDTO.locationId());
-        assertThat(verificationMeetingDTO.attendees()).hasSize(1);
-        assertThat(verificationMeetingDTO.attendees())
-                .extracting("id")
-                .containsExactlyInAnyOrder(attendee1.getId());
-    }
-
 
     private static Stream<Arguments> invalidMeetingCreationArguments() {
         LocalDateTime validTime = LocalDateTime.of(Year.now().getValue() + 1, 8, 15, 10, 0);
@@ -263,109 +209,6 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
                         "not found"
                 )
         );
-    }
-
-    @ParameterizedTest(name = "Scenario: {0}")
-    @MethodSource("invalidMeetingCreationArguments")
-    void shouldThrowException_WhenCreatingInvalidMeeting(
-            String testCaseName,
-            TestSetupCallback<CreateMeetingRequestDTO> requestBuilder,
-            Class<? extends Throwable> expectedException,
-            String expectedErrorMessagePart) {
-
-        TestEntityContext context = new TestEntityContext(
-            location1.getId(), location2.getId(), attendee1.getId(), attendee2.getId(), attendee3.getId()
-        );
-
-        CreateMeetingRequestDTO requestDTO = requestBuilder.build(context);
-        
-        Throwable thrownException = assertThrows(expectedException, () -> {
-            meetingService.createMeeting(requestDTO);
-        });
-
-        assertThat(thrownException.getMessage()).contains(expectedErrorMessagePart);
-    }
-
-    // Read Operations
-
-    @Test
-    void shouldGetAllMeetingsSuccessfully() {
-        List<MeetingDTO> foundMeetings = meetingService.getAllMeetings();
-        assertThat(foundMeetings).isNotNull();
-        assertThat(foundMeetings).hasSize(2);
-        assertThat(foundMeetings)
-                .extracting(MeetingDTO::title)
-                .containsExactlyInAnyOrder("Meeting One Title", "Meeting Two Title");
-    }
-
-    @Test
-    void shouldReturnEmptyListWhenNoMeetingsExist() {
-        meetingRepository.deleteAll();
-        List<MeetingDTO> meetingsFromRepo = meetingService.getAllMeetings();
-        assertThat(meetingsFromRepo).isNotNull().isEmpty();
-    }
-
-    @Test
-    void shouldGetMeetingByIdSuccessfully() {
-        Long meetingId = meeting1.getId();
-
-        assertThat(meetingRepository.findById(meetingId)).isPresent();
-
-        MeetingDTO foundMeeting = meetingService.getMeetingById(meetingId);
-        assertThat(foundMeeting).isNotNull();
-        assertThat(foundMeeting.title()).isEqualTo(meeting1.getTitle());
-    }
-
-    @Test
-    void shouldThrowEntityNotFoundException_WhenGettingNonExistentMeeting() {
-        Long nonExistentMeetingId = 0L;
-        String expectedErrorMessage = "Meeting not found with ID: " + nonExistentMeetingId;
-
-        EntityNotFoundException thrownException = assertThrows(
-                EntityNotFoundException.class,
-                () -> {
-                    meetingService.getMeetingById(nonExistentMeetingId);
-                }
-        );
-
-        assertThat(thrownException.getMessage()).isEqualTo(expectedErrorMessage);
-    }
-
-    // Update Operations
-
-    @Test
-    void shouldUpdateMeetingSuccessfully() {
-        Long meetingIdToUpdate = meeting1.getId();
-
-        UpdateMeetingRequestDTO requestDTO = new UpdateMeetingRequestDTO(
-                "Title Updated",
-                DEFAULT_TIME.plusHours(2),
-                DEFAULT_TIME.plusHours(3),
-                location2.getId(),
-                Set.of(attendee2.getId(), attendee3.getId())
-        );
-
-        MeetingDTO updatedMeetingDTO = meetingService.updateMeeting(meetingIdToUpdate, requestDTO);
-        assertThat(updatedMeetingDTO).isNotNull();
-        assertThat(updatedMeetingDTO.id()).isEqualTo(meetingIdToUpdate);
-        assertThat(updatedMeetingDTO.title()).isEqualTo(requestDTO.title());
-        assertThat(updatedMeetingDTO.startTime()).isEqualTo(requestDTO.startTime());
-        assertThat(updatedMeetingDTO.endTime()).isEqualTo(requestDTO.endTime());
-        assertThat(updatedMeetingDTO.location().id()).isEqualTo(requestDTO.locationId());
-        assertThat(updatedMeetingDTO.attendees()).hasSize(2);
-        assertThat(updatedMeetingDTO.attendees())
-                .extracting("id")
-                .containsExactlyInAnyOrder(attendee2.getId(), attendee3.getId());
-
-        MeetingDTO verificationMeetingDTO = meetingService.getMeetingById(meetingIdToUpdate);
-        assertThat(verificationMeetingDTO.title()).isEqualTo(requestDTO.title());
-        assertThat(verificationMeetingDTO.startTime()).isEqualTo(requestDTO.startTime());
-        assertThat(verificationMeetingDTO.endTime()).isEqualTo(requestDTO.endTime());
-        assertThat(verificationMeetingDTO.location().id()).isEqualTo(requestDTO.locationId());
-        assertThat(verificationMeetingDTO.attendees()).hasSize(2);
-        assertThat(verificationMeetingDTO.attendees())
-                .extracting("id")
-                .containsExactlyInAnyOrder(attendee2.getId(), attendee3.getId());
     }
 
     private static Stream<Arguments> invalidMeetingUpdateArguments() {
@@ -483,6 +326,144 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
         );
     }
 
+    // Create Operations
+
+    @Test
+    void shouldCreateMeetingSuccessfully() {
+
+        CreateMeetingRequestDTO requestDTO = new CreateMeetingRequestDTO(
+                "Meeting title",
+                DEFAULT_TIME.plusHours(2),
+                DEFAULT_TIME.plusHours(3),
+                location1.getId(),
+                Set.of(attendee1.getId())
+        );
+
+        MeetingDTO createdMeetingDTO = meetingService.createMeeting(requestDTO);
+        assertThat(createdMeetingDTO).isNotNull();
+        assertThat(createdMeetingDTO.title()).isEqualTo(requestDTO.title());
+        assertThat(createdMeetingDTO.startTime()).isEqualTo(requestDTO.startTime());
+        assertThat(createdMeetingDTO.endTime()).isEqualTo(requestDTO.endTime());
+        assertThat(createdMeetingDTO.location().id()).isEqualTo(requestDTO.locationId());
+        assertThat(createdMeetingDTO.attendees()).hasSize(1);
+        assertThat(createdMeetingDTO.attendees())
+                .extracting("id")
+                .containsExactlyInAnyOrder(attendee1.getId());
+
+        Long meetingId = createdMeetingDTO.id();
+        MeetingDTO verificationMeetingDTO = meetingService.getMeetingById(meetingId);
+        assertThat(verificationMeetingDTO.title()).isEqualTo(requestDTO.title());
+        assertThat(verificationMeetingDTO.startTime()).isEqualTo(requestDTO.startTime());
+        assertThat(verificationMeetingDTO.endTime()).isEqualTo(requestDTO.endTime());
+        assertThat(verificationMeetingDTO.location().id()).isEqualTo(requestDTO.locationId());
+        assertThat(verificationMeetingDTO.attendees()).hasSize(1);
+        assertThat(verificationMeetingDTO.attendees())
+                .extracting("id")
+                .containsExactlyInAnyOrder(attendee1.getId());
+    }
+
+    @ParameterizedTest(name = "Scenario: {0}")
+    @MethodSource("invalidMeetingCreationArguments")
+    void shouldThrowException_WhenCreatingInvalidMeeting(
+            String testCaseName,
+            TestSetupCallback<CreateMeetingRequestDTO> requestBuilder,
+            Class<? extends Throwable> expectedException,
+            String expectedErrorMessagePart) {
+
+        TestEntityContext context = new TestEntityContext(
+                location1.getId(), location2.getId(), attendee1.getId(), attendee2.getId(), attendee3.getId()
+        );
+
+        CreateMeetingRequestDTO requestDTO = requestBuilder.build(context);
+
+        Throwable thrownException = assertThrows(expectedException, () -> {
+            meetingService.createMeeting(requestDTO);
+        });
+
+        assertThat(thrownException.getMessage()).contains(expectedErrorMessagePart);
+    }
+
+    // Read Operations
+
+    @Test
+    void shouldGetAllMeetingsSuccessfully() {
+        List<MeetingDTO> foundMeetings = meetingService.getAllMeetings();
+        assertThat(foundMeetings).isNotNull();
+        assertThat(foundMeetings).hasSize(2);
+        assertThat(foundMeetings)
+                .extracting(MeetingDTO::title)
+                .containsExactlyInAnyOrder("Meeting One Title", "Meeting Two Title");
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoMeetingsExist() {
+        meetingRepository.deleteAll();
+        List<MeetingDTO> meetingsFromRepo = meetingService.getAllMeetings();
+        assertThat(meetingsFromRepo).isNotNull().isEmpty();
+    }
+
+    @Test
+    void shouldGetMeetingByIdSuccessfully() {
+        Long meetingId = meeting1.getId();
+
+        assertThat(meetingRepository.findById(meetingId)).isPresent();
+
+        MeetingDTO foundMeeting = meetingService.getMeetingById(meetingId);
+        assertThat(foundMeeting).isNotNull();
+        assertThat(foundMeeting.title()).isEqualTo(meeting1.getTitle());
+    }
+
+    @Test
+    void shouldThrowEntityNotFoundException_WhenGettingNonExistentMeeting() {
+        Long nonExistentMeetingId = 0L;
+        String expectedErrorMessage = "Meeting not found with ID: " + nonExistentMeetingId;
+
+        EntityNotFoundException thrownException = assertThrows(
+                EntityNotFoundException.class,
+                () -> {
+                    meetingService.getMeetingById(nonExistentMeetingId);
+                }
+        );
+
+        assertThat(thrownException.getMessage()).isEqualTo(expectedErrorMessage);
+    }
+
+    // Update Operations
+
+    @Test
+    void shouldUpdateMeetingSuccessfully() {
+        Long meetingIdToUpdate = meeting1.getId();
+
+        UpdateMeetingRequestDTO requestDTO = new UpdateMeetingRequestDTO(
+                "Title Updated",
+                DEFAULT_TIME.plusHours(2),
+                DEFAULT_TIME.plusHours(3),
+                location2.getId(),
+                Set.of(attendee2.getId(), attendee3.getId())
+        );
+
+        MeetingDTO updatedMeetingDTO = meetingService.updateMeeting(meetingIdToUpdate, requestDTO);
+        assertThat(updatedMeetingDTO).isNotNull();
+        assertThat(updatedMeetingDTO.id()).isEqualTo(meetingIdToUpdate);
+        assertThat(updatedMeetingDTO.title()).isEqualTo(requestDTO.title());
+        assertThat(updatedMeetingDTO.startTime()).isEqualTo(requestDTO.startTime());
+        assertThat(updatedMeetingDTO.endTime()).isEqualTo(requestDTO.endTime());
+        assertThat(updatedMeetingDTO.location().id()).isEqualTo(requestDTO.locationId());
+        assertThat(updatedMeetingDTO.attendees()).hasSize(2);
+        assertThat(updatedMeetingDTO.attendees())
+                .extracting("id")
+                .containsExactlyInAnyOrder(attendee2.getId(), attendee3.getId());
+
+        MeetingDTO verificationMeetingDTO = meetingService.getMeetingById(meetingIdToUpdate);
+        assertThat(verificationMeetingDTO.title()).isEqualTo(requestDTO.title());
+        assertThat(verificationMeetingDTO.startTime()).isEqualTo(requestDTO.startTime());
+        assertThat(verificationMeetingDTO.endTime()).isEqualTo(requestDTO.endTime());
+        assertThat(verificationMeetingDTO.location().id()).isEqualTo(requestDTO.locationId());
+        assertThat(verificationMeetingDTO.attendees()).hasSize(2);
+        assertThat(verificationMeetingDTO.attendees())
+                .extracting("id")
+                .containsExactlyInAnyOrder(attendee2.getId(), attendee3.getId());
+    }
 
     @ParameterizedTest(name = "Scenario: {0}")
     @MethodSource("invalidMeetingUpdateArguments")
@@ -490,7 +471,7 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
             String testCaseName,
             TestSetupCallback<UpdateMeetingRequestDTO> requestBuilder,
             Class<? extends Throwable> expectedException,
-            String expectedErrorMessagePart ) {
+            String expectedErrorMessagePart) {
         Long meetingIdToUpdate = meeting1.getId();
 
         TestEntityContext context = new TestEntityContext(
@@ -550,7 +531,6 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(thrownException.getMessage()).isEqualTo(expectedErrorMessage);
     }
-
 
     // Concurrent updates testing
 
@@ -626,8 +606,8 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
         assertThat(finalMeeting.attendees())
                 .extracting("id").
                 containsExactlyInAnyOrder(
-                attendee1.getId(), attendee2.getId()
-        );
+                        attendee1.getId(), attendee2.getId()
+                );
     }
 
     @Test
@@ -654,5 +634,20 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
         // The final state should reflect the last update
         MeetingDTO finalMeeting = meetingService.getMeetingById(meetingId);
         assertThat(finalMeeting.title()).isEqualTo("Final Update");
+    }
+
+    // Receives test context and populates request
+    @FunctionalInterface
+    public interface TestSetupCallback<T> {
+        T build(TestEntityContext context);
+    }
+
+    // Test context (for ParameterizedTest)
+    public record TestEntityContext(
+            Long location1Id,
+            Long location2Id,
+            Long attendee1Id,
+            Long attendee2Id,
+            Long attendee3Id) {
     }
 }

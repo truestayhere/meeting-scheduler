@@ -1,10 +1,10 @@
 package com.truestayhere.meeting_scheduler.helper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.truestayhere.meeting_scheduler.dto.request.*;
+import com.truestayhere.meeting_scheduler.dto.request.CreateMeetingRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.MeetingSuggestionRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.UpdateMeetingRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.MeetingDTO;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -12,9 +12,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * Specific helper for Meeting controller tests

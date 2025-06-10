@@ -231,7 +231,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
         attendee.setWorkingEndTime(LocalTime.of(16, 30));
         Attendee attendeeToUpdate = attendeeRepository.save(attendee);
-        Long attendeeIdToUpdate  = attendeeToUpdate.getId();
+        Long attendeeIdToUpdate = attendeeToUpdate.getId();
 
         Attendee conflictingAttendee = new Attendee(
                 "Attendee Name",
@@ -242,7 +242,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
         attendee.setWorkingEndTime(LocalTime.of(16, 30));
         Attendee savedConflictingAttendee = attendeeRepository.save(conflictingAttendee);
-        Long conflictingAttendeeId  = savedConflictingAttendee.getId();
+        Long conflictingAttendeeId = savedConflictingAttendee.getId();
 
         UpdateAttendeeRequestDTO requestDTOWithDuplicateEmail = new UpdateAttendeeRequestDTO(
                 null,

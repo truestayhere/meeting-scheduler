@@ -1,7 +1,9 @@
 package com.truestayhere.meeting_scheduler.helper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.truestayhere.meeting_scheduler.dto.request.*;
+import com.truestayhere.meeting_scheduler.dto.request.CommonAvailabilityRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.CreateAttendeeRequestDTO;
+import com.truestayhere.meeting_scheduler.dto.request.UpdateAttendeeRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.AttendeeDTO;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -9,8 +11,8 @@ import org.springframework.test.web.servlet.ResultActions;
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.is;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * Specific helper for Attendee controller tests

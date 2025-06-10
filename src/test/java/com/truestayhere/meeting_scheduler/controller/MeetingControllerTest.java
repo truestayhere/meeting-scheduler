@@ -60,18 +60,14 @@ public class MeetingControllerTest {
     JwtDecoder jwtDecoder;
     @MockitoBean
     UserDetailsService userDetailsService;
-
+    LocalDate DEFAULT_DATE = LocalDate.of(Year.now().getValue() + 1, 8, 14);
+    LocalDateTime DEFAULT_RANGE_START = DEFAULT_DATE.atTime(10, 0);
+    LocalDateTime DEFAULT_RANGE_END = DEFAULT_DATE.atTime(11, 0);
     @Autowired
     private MockMvc mockMvc;
     @Autowired
     private ObjectMapper objectMapper;
-
     private MeetingTestHelper meetingTestHelper;
-
-    LocalDate DEFAULT_DATE = LocalDate.of(Year.now().getValue() + 1, 8, 14);
-    LocalDateTime DEFAULT_RANGE_START = DEFAULT_DATE.atTime(10, 0);
-    LocalDateTime DEFAULT_RANGE_END = DEFAULT_DATE.atTime(11, 0);
-
     private CreateMeetingRequestDTO createRequest;
     private UpdateMeetingRequestDTO updateRequest;
     private MeetingDTO meetingDTO1, meetingDTO2;
@@ -142,20 +138,6 @@ public class MeetingControllerTest {
 
     }
 
-    // === CREATE ===
-
-    @Test
-    @WithMockUser
-    void createMeeting_whenValidInput_shouldReturn201CreatedAndMeetingResponse() throws Exception {
-        when(meetingService.createMeeting(any(CreateMeetingRequestDTO.class))).thenReturn(meetingDTO1);
-
-        ResultActions resultActions = meetingTestHelper.performCreateMeeting(createRequest);
-
-        meetingTestHelper.assertCreatedMeetingResponse(resultActions, meetingDTO1);
-
-        verify(meetingService).createMeeting(any(CreateMeetingRequestDTO.class));
-    }
-
     private static Stream<Arguments> invalidCreateRequestProvider() {
 
         String validTitle = "Meeting Title";
@@ -218,6 +200,127 @@ public class MeetingControllerTest {
                         "Start time must me before end time."
                 )
         );
+    }
+
+    private static Stream<Arguments> partialUpdateMeetingRequestProvider() {
+
+        String newTitle = "Updated Title";
+        LocalDate date = LocalDate.of(Year.now().getValue() + 1, 8, 14);
+        LocalDateTime newStartTime = date.atTime(10, 15);
+        LocalDateTime newEndTime = date.atTime(11, 15);
+        Long newLocationId = 202L;
+        Set<Long> newAttendeeIds = Set.of(2L);
+
+        return Stream.of(
+                Arguments.of(
+                        "Title Updated",
+                        new UpdateMeetingRequestDTO(newTitle, null, null, null, null)
+                ),
+                Arguments.of(
+                        "Start time Updated",
+                        new UpdateMeetingRequestDTO(null, newStartTime, null, null, null)
+                ),
+                Arguments.of(
+                        "End time Updated",
+                        new UpdateMeetingRequestDTO(null, null, newEndTime, null, null)
+                ),
+                Arguments.of(
+                        "LocationId Updated",
+                        new UpdateMeetingRequestDTO(null, null, null, newLocationId, null)
+                ),
+                Arguments.of(
+                        "AttendeeIds Updated",
+                        new UpdateMeetingRequestDTO(null, null, null, null, newAttendeeIds)
+                )
+        );
+    }
+
+    private static Stream<Arguments> invalidUpdateRequestProvider() {
+
+        String validTitle = "Meeting Title Updated";
+        String longTitle = "a".repeat(201);
+        LocalDate validDate = LocalDate.of(Year.now().getValue() + 1, 8, 14);
+        LocalDate pastDate = LocalDate.of(Year.now().getValue() - 100, 8, 14);
+        LocalDateTime exampleStartTime = validDate.atTime(10, 15);
+        LocalDateTime pastStartTime = pastDate.atTime(10, 15);
+        LocalDateTime exampleEndTime = validDate.atTime(11, 15);
+        Long validLocationId = 202L;
+        Set<Long> validAttendeeIds = Set.of(102L);
+
+        return Stream.of(
+                Arguments.of(
+                        "Title is blank",
+                        new UpdateMeetingRequestDTO("", exampleStartTime, exampleEndTime, validLocationId, validAttendeeIds),
+                        "updateMeetingRequestDTO",
+                        "Title cannot be blank when provided."
+                ),
+                Arguments.of(
+                        "Title is longer than max",
+                        new UpdateMeetingRequestDTO(longTitle, exampleStartTime, exampleEndTime, validLocationId, validAttendeeIds),
+                        "title",
+                        "Meeting title must not exceed 200 characters."
+                ),
+                Arguments.of(
+                        "AttendeeIds is empty",
+                        new UpdateMeetingRequestDTO(validTitle, exampleStartTime, exampleEndTime, validLocationId, Set.of()),
+                        "updateMeetingRequestDTO",
+                        "Attendee list cannot be empty when provided."
+                ),
+                Arguments.of(
+                        "StartTime in the past",
+                        new UpdateMeetingRequestDTO(validTitle, pastStartTime, exampleEndTime, validLocationId, validAttendeeIds),
+                        "startTime",
+                        "Meeting start time cannot be set in the past."
+                )
+        );
+    }
+
+    private static Stream<Arguments> invalidMeetingSuggestionsRequestProvider() {
+
+        Set<Long> validAttendeeIds = Set.of(1L, 2L);
+        Integer validDurationMinutes = 30;
+        LocalDate validDate = LocalDate.of(Year.now().getValue() + 1, 8, 14);
+
+        return Stream.of(
+                Arguments.of(
+                        "AttendeeIds is null or empty",
+                        new MeetingSuggestionRequestDTO(null, validDurationMinutes, validDate),
+                        "attendeeIds",
+                        "Attendee list cannot be empty."
+                ),
+                Arguments.of(
+                        "Date is null",
+                        new MeetingSuggestionRequestDTO(validAttendeeIds, validDurationMinutes, null),
+                        "date",
+                        "A date must be provided."
+                ),
+                Arguments.of(
+                        "DurationMinutes is null",
+                        new MeetingSuggestionRequestDTO(validAttendeeIds, null, validDate),
+                        "durationMinutes",
+                        "Meeting duration cannot be empty."
+                ),
+                Arguments.of(
+                        "DurationMinutes less than min",
+                        new MeetingSuggestionRequestDTO(validAttendeeIds, 0, validDate),
+                        "durationMinutes",
+                        "Duration must me at least 1 minute."
+                )
+        );
+    }
+
+    // === CREATE ===
+
+    @Test
+    @WithMockUser
+    void createMeeting_whenValidInput_shouldReturn201CreatedAndMeetingResponse() throws Exception {
+        when(meetingService.createMeeting(any(CreateMeetingRequestDTO.class))).thenReturn(meetingDTO1);
+
+        ResultActions resultActions = meetingTestHelper.performCreateMeeting(createRequest);
+
+        meetingTestHelper.assertCreatedMeetingResponse(resultActions, meetingDTO1);
+
+        verify(meetingService).createMeeting(any(CreateMeetingRequestDTO.class));
     }
 
     @ParameterizedTest(name = "Validation Error: {0}")
@@ -401,39 +504,6 @@ public class MeetingControllerTest {
         verify(meetingService).updateMeeting(eq(meetingIdToUpdate), any(UpdateMeetingRequestDTO.class));
     }
 
-    private static Stream<Arguments> partialUpdateMeetingRequestProvider() {
-
-        String newTitle = "Updated Title";
-        LocalDate date = LocalDate.of(Year.now().getValue() + 1, 8, 14);
-        LocalDateTime newStartTime = date.atTime(10, 15);
-        LocalDateTime newEndTime = date.atTime(11, 15);
-        Long newLocationId = 202L;
-        Set<Long> newAttendeeIds = Set.of(2L);
-
-        return Stream.of(
-                Arguments.of(
-                        "Title Updated",
-                        new UpdateMeetingRequestDTO(newTitle, null, null, null, null)
-                ),
-                Arguments.of(
-                        "Start time Updated",
-                        new UpdateMeetingRequestDTO(null, newStartTime, null, null, null)
-                ),
-                Arguments.of(
-                        "End time Updated",
-                        new UpdateMeetingRequestDTO(null, null, newEndTime, null, null)
-                ),
-                Arguments.of(
-                        "LocationId Updated",
-                        new UpdateMeetingRequestDTO(null, null, null, newLocationId, null)
-                ),
-                Arguments.of(
-                        "AttendeeIds Updated",
-                        new UpdateMeetingRequestDTO(null, null, null, null, newAttendeeIds)
-                )
-        );
-    }
-
     @ParameterizedTest(name = "Partial Update: {0}")
     @MethodSource("partialUpdateMeetingRequestProvider")
     @WithMockUser
@@ -454,51 +524,11 @@ public class MeetingControllerTest {
 
         when(meetingService.updateMeeting(eq(meetingIdToUpdate), any(UpdateMeetingRequestDTO.class))).thenReturn(partiallyUpdatedMeetingDTO);
 
-        ResultActions resultActions = meetingTestHelper.performUpdateMeeting(meetingIdToUpdate, requestDto).andDo(print()); ;
+        ResultActions resultActions = meetingTestHelper.performUpdateMeeting(meetingIdToUpdate, requestDto).andDo(print());
 
         meetingTestHelper.assertMeetingResponse(resultActions, partiallyUpdatedMeetingDTO);
 
         verify(meetingService).updateMeeting(eq(meetingIdToUpdate), any(UpdateMeetingRequestDTO.class));
-    }
-
-    private static Stream<Arguments> invalidUpdateRequestProvider() {
-
-        String validTitle = "Meeting Title Updated";
-        String longTitle = "a".repeat(201);
-        LocalDate validDate = LocalDate.of(Year.now().getValue() + 1, 8, 14);
-        LocalDate pastDate = LocalDate.of(Year.now().getValue() - 100, 8, 14);
-        LocalDateTime exampleStartTime = validDate.atTime(10, 15);
-        LocalDateTime pastStartTime = pastDate.atTime(10, 15);
-        LocalDateTime exampleEndTime = validDate.atTime(11, 15);
-        Long validLocationId = 202L;
-        Set<Long> validAttendeeIds = Set.of(102L);
-
-        return Stream.of(
-                Arguments.of(
-                        "Title is blank",
-                        new UpdateMeetingRequestDTO("", exampleStartTime, exampleEndTime, validLocationId, validAttendeeIds),
-                        "updateMeetingRequestDTO",
-                        "Title cannot be blank when provided."
-                ),
-                Arguments.of(
-                        "Title is longer than max",
-                        new UpdateMeetingRequestDTO(longTitle, exampleStartTime, exampleEndTime, validLocationId, validAttendeeIds),
-                        "title",
-                        "Meeting title must not exceed 200 characters."
-                ),
-                Arguments.of(
-                        "AttendeeIds is empty",
-                        new UpdateMeetingRequestDTO(validTitle, exampleStartTime, exampleEndTime, validLocationId, Set.of()),
-                        "updateMeetingRequestDTO",
-                        "Attendee list cannot be empty when provided."
-                ),
-                Arguments.of(
-                        "StartTime in the past",
-                        new UpdateMeetingRequestDTO(validTitle, pastStartTime, exampleEndTime, validLocationId, validAttendeeIds),
-                        "startTime",
-                        "Meeting start time cannot be set in the past."
-                )
-        );
     }
 
     @ParameterizedTest(name = "Validation Error: {0}")
@@ -667,7 +697,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void getMeetingsByAttendeeAndRange_whenValidInputAndAttendeeExists_shouldReturn200OkAndListOfMeetings() throws Exception{
+    void getMeetingsByAttendeeAndRange_whenValidInputAndAttendeeExists_shouldReturn200OkAndListOfMeetings() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
         LocalDateTime rangeEnd = DEFAULT_RANGE_END;
@@ -683,7 +713,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void getMeetingsByAttendeeAndRange_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception{
+    void getMeetingsByAttendeeAndRange_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentAttendeeId = 0L;
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
         LocalDateTime rangeEnd = DEFAULT_RANGE_END;
@@ -699,7 +729,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void getMeetingsByAttendeeAndRange_whenMissingTimeParams_shouldReturn400BadRequest() throws Exception{
+    void getMeetingsByAttendeeAndRange_whenMissingTimeParams_shouldReturn400BadRequest() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         String expectedErrorMessage = "Required parameter 'start' of type 'LocalDateTime' is missing.";
 
@@ -717,7 +747,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void getMeetingsByAttendeeAndRange_whenInvalidDateTimeFormat_shouldReturn400BadRequest() throws Exception{
+    void getMeetingsByAttendeeAndRange_whenInvalidDateTimeFormat_shouldReturn400BadRequest() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         String invalidDateTimeStr = "30-08-2025T10:00:00";
         LocalDateTime rangeEnd = DEFAULT_RANGE_END;
@@ -735,7 +765,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void getMeetingsByAttendeeAndRange_whenAttendeeIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception{
+    void getMeetingsByAttendeeAndRange_whenAttendeeIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception {
         String invalidId = "abc";
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
         LocalDateTime rangeEnd = DEFAULT_RANGE_END;
@@ -757,7 +787,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void getMeetingsByLocationAndRange_whenValidInputAndLocationExists_shouldReturn200OkAndListOfMeetings() throws Exception{
+    void getMeetingsByLocationAndRange_whenValidInputAndLocationExists_shouldReturn200OkAndListOfMeetings() throws Exception {
         Long locationId = locationDTO1.id();
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
         LocalDateTime rangeEnd = DEFAULT_RANGE_END;
@@ -773,7 +803,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void getMeetingsByLocationAndRange_whenLocationNotFound_shouldReturn404NotFound() throws Exception{
+    void getMeetingsByLocationAndRange_whenLocationNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentLocationId = 0L;
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
         LocalDateTime rangeEnd = DEFAULT_RANGE_END;
@@ -789,7 +819,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void getMeetingsByLocationAndRange_whenMissingTimeParams_shouldReturn400BadRequest() throws Exception{
+    void getMeetingsByLocationAndRange_whenMissingTimeParams_shouldReturn400BadRequest() throws Exception {
         Long locationId = locationDTO1.id();
         String expectedErrorMessage = "Required parameter 'start' of type 'LocalDateTime' is missing.";
 
@@ -807,7 +837,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void getMeetingsByLocationAndRange_whenInvalidDateTimeFormat_shouldReturn400BadRequest() throws Exception{
+    void getMeetingsByLocationAndRange_whenInvalidDateTimeFormat_shouldReturn400BadRequest() throws Exception {
         Long locationId = locationDTO1.id();
         String invalidDateTimeStr = "30-08-2025T10:00:00";
         LocalDateTime rangeEnd = DEFAULT_RANGE_END;
@@ -825,7 +855,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void getMeetingsByLocationAndRange_whenLocationIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception{
+    void getMeetingsByLocationAndRange_whenLocationIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception {
         String invalidId = "abc";
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
         LocalDateTime rangeEnd = DEFAULT_RANGE_END;
@@ -847,7 +877,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void findMeetingSuggestions_whenValidRequest_shouldReturn200OkAndListOfSuggestions() throws Exception{
+    void findMeetingSuggestions_whenValidRequest_shouldReturn200OkAndListOfSuggestions() throws Exception {
         Set<Long> attendeeIds = Set.of(attendeeDTO1.id(), attendeeDTO2.id());
         Integer durationMinutes = 30;
         LocalDate date = DEFAULT_DATE;
@@ -887,40 +917,6 @@ public class MeetingControllerTest {
         verify(availabilityService).findMeetingSuggestions(requestDTO);
     }
 
-    private static Stream<Arguments> invalidMeetingSuggestionsRequestProvider() {
-
-        Set<Long> validAttendeeIds = Set.of(1L, 2L);
-        Integer validDurationMinutes = 30;
-        LocalDate validDate = LocalDate.of(Year.now().getValue() + 1, 8, 14);
-
-        return Stream.of(
-                Arguments.of(
-                        "AttendeeIds is null or empty",
-                        new MeetingSuggestionRequestDTO(null, validDurationMinutes, validDate),
-                        "attendeeIds",
-                        "Attendee list cannot be empty."
-                ),
-                Arguments.of(
-                        "Date is null",
-                        new MeetingSuggestionRequestDTO(validAttendeeIds, validDurationMinutes, null),
-                        "date",
-                        "A date must be provided."
-                ),
-                Arguments.of(
-                        "DurationMinutes is null",
-                        new MeetingSuggestionRequestDTO(validAttendeeIds, null, validDate),
-                        "durationMinutes",
-                        "Meeting duration cannot be empty."
-                ),
-                Arguments.of(
-                        "DurationMinutes less than min",
-                        new MeetingSuggestionRequestDTO(validAttendeeIds, 0, validDate),
-                        "durationMinutes",
-                        "Duration must me at least 1 minute."
-                )
-        );
-    }
-
     @ParameterizedTest(name = "Validation Error: {0}")
     @MethodSource("invalidMeetingSuggestionsRequestProvider")
     @WithMockUser
@@ -929,7 +925,7 @@ public class MeetingControllerTest {
             MeetingSuggestionRequestDTO invalidRequest,
             String expectedErrorTarget,
             String expectedErrorMessage
-    ) throws Exception{
+    ) throws Exception {
         ResultActions resultActions = meetingTestHelper.performFindMeetingSuggestions(invalidRequest);
 
         meetingTestHelper.assertValidationError(resultActions, expectedErrorTarget, expectedErrorMessage);
@@ -960,7 +956,7 @@ public class MeetingControllerTest {
 
     @Test
     @WithMockUser
-    void findMeetingSuggestions_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception{
+    void findMeetingSuggestions_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentAttendeeId = attendeeDTO1.id();
         Integer durationMinutes = 30;
         LocalDate date = DEFAULT_DATE;

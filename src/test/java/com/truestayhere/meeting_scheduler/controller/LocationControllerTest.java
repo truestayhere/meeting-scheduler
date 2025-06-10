@@ -77,7 +77,6 @@ public class LocationControllerTest {
     private UpdateLocationRequestDTO updateRequest;
     private LocationDTO locationDTO1, locationDTO2;
 
-
     @BeforeEach
     void setUp() {
         locationTestHelper = new LocationTestHelper(mockMvc, objectMapper);
@@ -108,21 +107,6 @@ public class LocationControllerTest {
                 LocalTime.of(18, 0)
         );
     }
-
-    // === CREATE ===
-
-    @Test
-    @WithMockUser
-    void createLocation_whenValidInput_shouldReturn201CreatedAndLocationResponse() throws Exception {
-        when(locationService.createLocation(any(CreateLocationRequestDTO.class))).thenReturn(locationDTO1);
-
-        ResultActions resultActions = locationTestHelper.performCreateLocation(createRequest);
-
-        locationTestHelper.assertCreatedLocationResponse(resultActions, locationDTO1);
-
-        verify(locationService).createLocation(any(CreateLocationRequestDTO.class));
-    }
-
 
     private static Stream<Arguments> invalidCreateRequestProvider() {
 
@@ -165,6 +149,108 @@ public class LocationControllerTest {
                         "Working start time and end time cannot be the same."
                 )
         );
+    }
+
+    private static Stream<Arguments> invalidUpdateRequestProvider() {
+
+        String validName = "Room 1";
+        String longName = "a".repeat(151);
+        Integer validCapacity = 10;
+        LocalTime validStartTime = LocalTime.of(9, 0);
+        LocalTime validEndTime = LocalTime.of(17, 0);
+        LocalTime sameTime = LocalTime.of(10, 0);
+
+        return Stream.of(
+                Arguments.of(
+                        "Name longer than max",
+                        new UpdateLocationRequestDTO(longName, validCapacity, validStartTime, validEndTime),
+                        "name",
+                        "Location name cannot exceed 150 characters."
+                ),
+                Arguments.of(
+                        "Capacity less than min",
+                        new UpdateLocationRequestDTO(validName, 0, validStartTime, validEndTime),
+                        "capacity",
+                        "Location capacity must be at least 1."
+                ),
+                Arguments.of(
+                        "Working start time equals end time",
+                        new UpdateLocationRequestDTO(validName, validCapacity, sameTime, sameTime),
+                        "updateLocationRequestDTO",
+                        "Working start time and end time cannot be the same."
+                )
+        );
+    }
+
+    private static Stream<Arguments> invalidLocationAvailabilityRequestProvider() {
+        LocalDate validDate = LocalDate.of(Year.now().getValue() + 1, 8, 15);
+        int validDuration = 60;
+        Integer validMinCapacity = 5;
+
+        LocationAvailabilityRequestDTO missingDateRequest = new LocationAvailabilityRequestDTO(
+                null,
+                validDuration,
+                validMinCapacity
+        );
+
+        LocationAvailabilityRequestDTO missingDurationRequest = new LocationAvailabilityRequestDTO(
+                validDate,
+                null,
+                validMinCapacity
+        );
+
+        LocationAvailabilityRequestDTO invalidDurationRequest = new LocationAvailabilityRequestDTO(
+                validDate,
+                0,
+                validMinCapacity
+        );
+
+        LocationAvailabilityRequestDTO invalidCapacityRequest = new LocationAvailabilityRequestDTO(
+                validDate,
+                validDuration,
+                0
+        );
+
+        return Stream.of(
+                Arguments.of(
+                        "Date is null",
+                        missingDateRequest,
+                        "date",
+                        "A date must be provided."
+                ),
+                Arguments.of(
+                        "Duration is null",
+                        missingDurationRequest,
+                        "durationMinutes",
+                        "Minimum duration must be provided."
+                ),
+                Arguments.of(
+                        "Duration less than min",
+                        invalidDurationRequest,
+                        "durationMinutes",
+                        "Duration must be at least 1 minute."
+                ),
+                Arguments.of(
+                        "Minimum capacity less than min (when provided)",
+                        invalidCapacityRequest,
+                        "minimumCapacity",
+                        "Minimum capacity must be at least 1 if provided."
+                )
+        );
+    }
+
+    // === CREATE ===
+
+    @Test
+    @WithMockUser
+    void createLocation_whenValidInput_shouldReturn201CreatedAndLocationResponse() throws Exception {
+        when(locationService.createLocation(any(CreateLocationRequestDTO.class))).thenReturn(locationDTO1);
+
+        ResultActions resultActions = locationTestHelper.performCreateLocation(createRequest);
+
+        locationTestHelper.assertCreatedLocationResponse(resultActions, locationDTO1);
+
+        verify(locationService).createLocation(any(CreateLocationRequestDTO.class));
     }
 
     @ParameterizedTest(name = "Validation Error: {0}")
@@ -311,37 +397,6 @@ public class LocationControllerTest {
         locationTestHelper.assertLocationResponse(resultActions, updatedLocationDTO);
 
         verify(locationService).updateLocation(eq(locationIdToUpdate), any(UpdateLocationRequestDTO.class));
-    }
-
-    private static Stream<Arguments> invalidUpdateRequestProvider() {
-
-        String validName = "Room 1";
-        String longName = "a".repeat(151);
-        Integer validCapacity = 10;
-        LocalTime validStartTime = LocalTime.of(9, 0);
-        LocalTime validEndTime = LocalTime.of(17, 0);
-        LocalTime sameTime = LocalTime.of(10, 0);
-
-        return Stream.of(
-                Arguments.of(
-                        "Name longer than max",
-                        new UpdateLocationRequestDTO(longName, validCapacity, validStartTime, validEndTime),
-                        "name",
-                        "Location name cannot exceed 150 characters."
-                ),
-                Arguments.of(
-                        "Capacity less than min",
-                        new UpdateLocationRequestDTO(validName, 0, validStartTime, validEndTime),
-                        "capacity",
-                        "Location capacity must be at least 1."
-                ),
-                Arguments.of(
-                        "Working start time equals end time",
-                        new UpdateLocationRequestDTO(validName, validCapacity, sameTime, sameTime),
-                        "updateLocationRequestDTO",
-                        "Working start time and end time cannot be the same."
-                )
-        );
     }
 
     @ParameterizedTest(name = "Validation Error: {0}")
@@ -709,63 +764,6 @@ public class LocationControllerTest {
                 .andExpect(status().isOk());
 
         verify(availabilityService).getAvailabilityForLocationsByDuration(requestDTOWithNullCapacity);
-    }
-
-    private static Stream<Arguments> invalidLocationAvailabilityRequestProvider() {
-        LocalDate validDate = LocalDate.of(Year.now().getValue() + 1, 8, 15);
-        int validDuration = 60;
-        Integer validMinCapacity = 5;
-
-        LocationAvailabilityRequestDTO missingDateRequest = new LocationAvailabilityRequestDTO(
-                null,
-                validDuration,
-                validMinCapacity
-        );
-
-        LocationAvailabilityRequestDTO missingDurationRequest = new LocationAvailabilityRequestDTO(
-                validDate,
-                null,
-                validMinCapacity
-        );
-
-        LocationAvailabilityRequestDTO invalidDurationRequest = new LocationAvailabilityRequestDTO(
-                validDate,
-                0,
-                validMinCapacity
-        );
-
-        LocationAvailabilityRequestDTO invalidCapacityRequest = new LocationAvailabilityRequestDTO(
-                validDate,
-                validDuration,
-                0
-        );
-
-        return Stream.of(
-                Arguments.of(
-                        "Date is null",
-                        missingDateRequest,
-                        "date",
-                        "A date must be provided."
-                ),
-                Arguments.of(
-                        "Duration is null",
-                        missingDurationRequest,
-                        "durationMinutes",
-                        "Minimum duration must be provided."
-                ),
-                Arguments.of(
-                        "Duration less than min",
-                        invalidDurationRequest,
-                        "durationMinutes",
-                        "Duration must be at least 1 minute."
-                ),
-                Arguments.of(
-                        "Minimum capacity less than min (when provided)",
-                        invalidCapacityRequest,
-                        "minimumCapacity",
-                        "Minimum capacity must be at least 1 if provided."
-                )
-        );
     }
 
     @ParameterizedTest(name = "Validation Error: {0}")
