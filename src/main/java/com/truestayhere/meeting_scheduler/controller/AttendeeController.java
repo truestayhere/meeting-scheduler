@@ -8,6 +8,7 @@ import com.truestayhere.meeting_scheduler.dto.response.AttendeeDTO;
 import com.truestayhere.meeting_scheduler.dto.response.AvailableSlotDTO;
 import com.truestayhere.meeting_scheduler.service.AttendeeService;
 import com.truestayhere.meeting_scheduler.service.AvailabilityService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,6 +22,7 @@ import java.util.List;
 @RestController // handles HTTP requests, returns JSON body
 @RequestMapping("/api/attendees")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class AttendeeController {
     private final AttendeeService attendeeService;
     private final AvailabilityService availabilityService;

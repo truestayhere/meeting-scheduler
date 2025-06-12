@@ -32,7 +32,12 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 // Require authentication for ALL requests for now
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/auth/**").permitAll() // Allow access to authentication
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**"
+                        ).permitAll() // Allow access to authentication
                         .anyRequest().authenticated()) // Secure all other requests
                 // Configure OAuth2 Resource Server for JWT validation
                 .oauth2ResourceServer(oauth2 -> oauth2
