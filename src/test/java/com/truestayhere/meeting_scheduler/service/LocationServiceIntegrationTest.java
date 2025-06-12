@@ -265,7 +265,7 @@ public class LocationServiceIntegrationTest extends AbstractIntegrationTest {
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
         attendee.setWorkingEndTime(LocalTime.of(16, 30));
-        attendeeRepository.save(attendee);
+        Attendee savedAttendee = attendeeRepository.save(attendee);
 
         Location location = new Location("Room 1", 10);
         location.setWorkingStartTime(LocalTime.of(8, 0));
@@ -278,9 +278,9 @@ public class LocationServiceIntegrationTest extends AbstractIntegrationTest {
                 "Title",
                 date.atTime(11, 0),
                 date.atTime(12, 0),
-                location
+                locationInUse
         );
-        meeting.addAttendee(attendee);
+        meeting.addAttendee(savedAttendee);
         meetingRepository.save(meeting);
 
         String expectedErrorMessage = String.format("Location cannot be deleted because it is used in %d meeting(s). See details.", 1);

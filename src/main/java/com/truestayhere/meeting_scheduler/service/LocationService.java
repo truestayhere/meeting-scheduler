@@ -105,12 +105,10 @@ public class LocationService {
 
         locationMapper.updateLocationFromDto(requestDTO, existingLocation);
 
-        // --- Save the Location ---
+        // --- Return Updated Location ---
 
-        Location savedLocation = locationRepository.save(existingLocation);
-
-        log.info("Successfully updated location with ID: {}", savedLocation.getId());
-        return locationMapper.mapToLocationDTO(savedLocation);
+        log.info("Successfully updated location with ID: {}", existingLocation.getId());
+        return locationMapper.mapToLocationDTO(existingLocation);
     }
 
 

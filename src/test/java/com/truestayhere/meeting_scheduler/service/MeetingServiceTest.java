@@ -21,11 +21,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.test.context.support.WithMockUser;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Year;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -100,7 +102,7 @@ public class MeetingServiceTest {
         mockAttendee2.setWorkingStartTime(LocalTime.of(9, 0));
         mockAttendee2.setWorkingEndTime(LocalTime.of(17, 0));
 
-        mockAttendees = Set.of(mockAttendee1, mockAttendee2);
+        mockAttendees = new HashSet<>(Set.of(mockAttendee1, mockAttendee2));
         mockAttendeeIds = mockAttendees.stream().map(Attendee::getId).collect(Collectors.toSet());
 
         mockAttendeeDTO1 = new AttendeeDTO(mockAttendee1.getId(), mockAttendee1.getName(), mockAttendee1.getEmail());
@@ -776,46 +778,31 @@ public class MeetingServiceTest {
         when(meetingRepository.findByAttendees_idAndStartTimeBeforeAndEndTimeAfter(
                 mockAttendee2.getId(), updateRequest.endTime(), defaultMeeting.getStartTime())).thenReturn(List.of());
 
-        Meeting savedMeetingAfterUpdate = new Meeting();
-        savedMeetingAfterUpdate.setId(meetingIdToUpdate);
-        savedMeetingAfterUpdate.setTitle(updateRequest.title());
-        savedMeetingAfterUpdate.setStartTime(defaultMeeting.getStartTime());
-        savedMeetingAfterUpdate.setEndTime(updateRequest.endTime());
-        savedMeetingAfterUpdate.setLocation(mockLocation2);
-        savedMeetingAfterUpdate.setAttendees(mockAttendees);
-
-        ArgumentCaptor<Meeting> meetingCaptor = ArgumentCaptor.forClass(Meeting.class);
-        when(meetingRepository.save(meetingCaptor.capture())).thenReturn(savedMeetingAfterUpdate);
-
         MeetingDTO expectedResponse = new MeetingDTO(
-                savedMeetingAfterUpdate.getId(), savedMeetingAfterUpdate.getTitle(), savedMeetingAfterUpdate.getStartTime(), savedMeetingAfterUpdate.getEndTime(), mockLocationDTO2, mockAttendeeDTOs
+                meetingIdToUpdate,
+                updateRequest.title(),
+                defaultMeeting.getStartTime(),
+                updateRequest.endTime(),
+                mockLocationDTO2,
+                mockAttendeeDTOs
         );
 
-        when(meetingMapper.mapToMeetingDTO(savedMeetingAfterUpdate)).thenReturn(expectedResponse);
+        when(meetingMapper.mapToMeetingDTO(any(Meeting.class))).thenReturn(expectedResponse);
 
         MeetingDTO result = meetingService.updateMeeting(meetingIdToUpdate, updateRequest);
 
         assertNotNull(result);
-        assertEquals(updateRequest.title(), result.title());
-        assertEquals(defaultMeeting.getStartTime(), result.startTime());
-        assertEquals(updateRequest.endTime(), result.endTime());
-        assertEquals(updateRequest.locationId(), result.location().id());
-        assertNotNull(result.attendees(), "Attendees list in response DTO should not be null.");
-        assertEquals(defaultMeeting.getAttendees().size(), result.attendees().size(), "Number of attendees in response should match requested ID count.");
-        assertTrue(result.attendees().containsAll(mockAttendeeDTOs)
-                        && mockAttendeeDTOs.containsAll(result.attendees()),
-                "Attendee IDs derived from response DTO do not match the requested IDs.");
+        assertEquals(expectedResponse, result);
 
+        ArgumentCaptor<Meeting> meetingCaptor = ArgumentCaptor.forClass(Meeting.class);
+        verify(meetingMapper).mapToMeetingDTO(meetingCaptor.capture());
         Meeting capturedMeeting = meetingCaptor.getValue();
-        assertNotNull(capturedMeeting, "Meeting entity passed to save should not be null.");
-        assertEquals(updateRequest.title(), capturedMeeting.getTitle(), "Title not set correctly on entity for save.");
-        assertEquals(defaultMeeting.getStartTime(), capturedMeeting.getStartTime(), "Start time not set correctly.");
-        assertEquals(updateRequest.endTime(), capturedMeeting.getEndTime(), "End time not set correctly.");
-        assertEquals(updateRequest.locationId(), capturedMeeting.getLocation().getId(), "Location object not set correctly.");
-        assertNotNull(capturedMeeting.getAttendees(), "Attendees set should not be null.");
-        assertEquals(defaultMeeting.getAttendees().size(), capturedMeeting.getAttendees().size(), "Number of attendees not set correctly.");
-        assertTrue(capturedMeeting.getAttendees().containsAll(defaultMeeting.getAttendees()) &&
-                defaultMeeting.getAttendees().containsAll(capturedMeeting.getAttendees()), "Attendees set does not match.");
+        assertNotNull(capturedMeeting);
+        assertEquals(defaultUpdateRequest.title(), capturedMeeting.getTitle());
+        assertEquals(defaultMeeting.getStartTime(), capturedMeeting.getStartTime(), "Start time should not have changed.");
+        assertEquals(updateRequest.endTime(), capturedMeeting.getEndTime(), "End time should have been updated.");
+        assertEquals(mockLocation2.getId(), capturedMeeting.getLocation().getId(), "Location should have been updated.");
+        assertEquals(defaultMeeting.getAttendees(), capturedMeeting.getAttendees(), "Attendees should not have changed.");
 
         verify(meetingRepository).findById(meetingIdToUpdate);
         verify(locationRepository).findById(updateRequest.locationId());
@@ -827,10 +814,7 @@ public class MeetingServiceTest {
                 mockAttendee1.getId(), updateRequest.endTime(), defaultMeeting.getStartTime());
         verify(meetingRepository).findByAttendees_idAndStartTimeBeforeAndEndTimeAfter(
                 mockAttendee2.getId(), updateRequest.endTime(), defaultMeeting.getStartTime());
-        verify(meetingRepository).save(capturedMeeting);
-        verify(meetingMapper).mapToMeetingDTO(savedMeetingAfterUpdate);
     }
-
 
     @Test
     void updateMeeting_shouldReturnMeetingDTO_whenAllFieldsUpdated() {
@@ -850,48 +834,31 @@ public class MeetingServiceTest {
         when(meetingRepository.findByAttendees_idAndStartTimeBeforeAndEndTimeAfter(
                 mockAttendee1.getId(), defaultUpdateRequest.endTime(), defaultUpdateRequest.startTime())).thenReturn(List.of());
 
-        Meeting savedMeetingAfterUpdate = new Meeting();
-        savedMeetingAfterUpdate.setId(meetingIdToUpdate);
-        savedMeetingAfterUpdate.setTitle(defaultUpdateRequest.title());
-        savedMeetingAfterUpdate.setStartTime(defaultUpdateRequest.startTime());
-        savedMeetingAfterUpdate.setEndTime(defaultUpdateRequest.endTime());
-        savedMeetingAfterUpdate.setLocation(mockLocation2);
-        savedMeetingAfterUpdate.setAttendees(Set.of(mockAttendee1));
-
-        ArgumentCaptor<Meeting> meetingCaptor = ArgumentCaptor.forClass(Meeting.class);
-        when(meetingRepository.save(meetingCaptor.capture())).thenReturn(savedMeetingAfterUpdate);
-
         MeetingDTO expectedResponse = new MeetingDTO(
-                savedMeetingAfterUpdate.getId(),
-                savedMeetingAfterUpdate.getTitle(),
-                savedMeetingAfterUpdate.getStartTime(),
-                savedMeetingAfterUpdate.getEndTime(),
+                meetingIdToUpdate,
+                defaultUpdateRequest.title(),
+                defaultUpdateRequest.startTime(),
+                defaultUpdateRequest.endTime(),
                 mockLocationDTO2,
                 Set.of(mockAttendeeDTO1)
         );
-
-        when(meetingMapper.mapToMeetingDTO(savedMeetingAfterUpdate)).thenReturn(expectedResponse);
+        when(meetingMapper.mapToMeetingDTO(any(Meeting.class))).thenReturn(expectedResponse);
 
         MeetingDTO result = meetingService.updateMeeting(meetingIdToUpdate, defaultUpdateRequest);
 
         assertNotNull(result);
-        assertEquals(defaultUpdateRequest.title(), result.title());
-        assertEquals(defaultUpdateRequest.startTime(), result.startTime());
-        assertEquals(defaultUpdateRequest.endTime(), result.endTime());
-        assertEquals(defaultUpdateRequest.locationId(), result.location().id());
-        assertNotNull(result.attendees(), "Attendees list in response DTO should not be null.");
-        assertEquals(defaultUpdateRequest.attendeeIds().size(), result.attendees().size(), "Number of attendees in response should match requested ID count.");
-        assertTrue(result.attendees().contains(mockAttendeeDTO1), "Attendee IDs derived from response DTO do not match the requested IDs.");
+        assertEquals(expectedResponse, result);
 
+        ArgumentCaptor<Meeting> meetingCaptor = ArgumentCaptor.forClass(Meeting.class);
+        verify(meetingMapper).mapToMeetingDTO(meetingCaptor.capture());
         Meeting capturedMeeting = meetingCaptor.getValue();
-        assertNotNull(capturedMeeting, "Meeting entity passed to save should not be null.");
-        assertEquals(defaultUpdateRequest.title(), capturedMeeting.getTitle(), "Title not set correctly on entity for save.");
-        assertEquals(defaultUpdateRequest.startTime(), capturedMeeting.getStartTime(), "Start time not set correctly.");
-        assertEquals(defaultUpdateRequest.endTime(), capturedMeeting.getEndTime(), "End time not set correctly.");
-        assertEquals(defaultUpdateRequest.locationId(), capturedMeeting.getLocation().getId(), "Location object not set correctly.");
-        assertNotNull(capturedMeeting.getAttendees(), "Attendees set should not be null.");
-        assertEquals(defaultUpdateRequest.attendeeIds().size(), capturedMeeting.getAttendees().size(), "Number of attendees not set correctly.");
-        assertTrue(capturedMeeting.getAttendees().contains(mockAttendee1), "Attendees set does not match.");
+        assertNotNull(capturedMeeting);
+        assertEquals(defaultUpdateRequest.title(), capturedMeeting.getTitle());
+        assertEquals(defaultUpdateRequest.startTime(), capturedMeeting.getStartTime());
+        assertEquals(defaultUpdateRequest.endTime(), capturedMeeting.getEndTime());
+        assertEquals(mockLocation2, capturedMeeting.getLocation());
+        assertEquals(1, capturedMeeting.getAttendees().size());
+        assertTrue(capturedMeeting.getAttendees().contains(mockAttendee1));
 
         verify(meetingRepository).findById(meetingIdToUpdate);
         verify(locationRepository).findById(defaultUpdateRequest.locationId());
@@ -902,8 +869,6 @@ public class MeetingServiceTest {
                 defaultUpdateRequest.locationId(), defaultUpdateRequest.endTime(), defaultUpdateRequest.startTime());
         verify(meetingRepository).findByAttendees_idAndStartTimeBeforeAndEndTimeAfter(
                 mockAttendee1.getId(), defaultUpdateRequest.endTime(), defaultUpdateRequest.startTime());
-        verify(meetingRepository).save(capturedMeeting);
-        verify(meetingMapper).mapToMeetingDTO(savedMeetingAfterUpdate);
     }
 
     @Test
@@ -914,12 +879,11 @@ public class MeetingServiceTest {
                 null,
                 null,
                 null,
-                defaultUpdateRequest.attendeeIds()
+                null
         );
 
-        // Fetch data (location is NOT being updated)
+        // Fetch data (location and attendees are NOT being updated)
         when(meetingRepository.findById(meetingIdToUpdate)).thenReturn(Optional.of(defaultMeeting));
-        when(attendeeRepository.findAllById(defaultUpdateRequest.attendeeIds())).thenReturn(List.of(mockAttendee1));
         // End fetch data
         // Return the meeting itself on duplicate check
         when(meetingRepository.findByLocation_idAndStartTimeAndEndTime(
@@ -931,27 +895,16 @@ public class MeetingServiceTest {
         when(meetingRepository.findByAttendees_idAndStartTimeBeforeAndEndTimeAfter(
                 mockAttendee1.getId(), defaultMeeting.getEndTime(), defaultMeeting.getStartTime())).thenReturn(List.of(defaultMeeting));
 
-        Meeting savedMeetingAfterUpdate = new Meeting();
-        savedMeetingAfterUpdate.setId(meetingIdToUpdate);
-        savedMeetingAfterUpdate.setTitle(updateRequest.title());
-        savedMeetingAfterUpdate.setStartTime(defaultMeeting.getStartTime());
-        savedMeetingAfterUpdate.setEndTime(defaultMeeting.getEndTime());
-        savedMeetingAfterUpdate.setLocation(defaultMeeting.getLocation());
-        savedMeetingAfterUpdate.setAttendees(Set.of(mockAttendee1));
-
-        when(meetingRepository.save(any(Meeting.class))).thenReturn(savedMeetingAfterUpdate);
-
         MeetingDTO expectedResponse = new MeetingDTO(
-                savedMeetingAfterUpdate.getId(), savedMeetingAfterUpdate.getTitle(), savedMeetingAfterUpdate.getStartTime(), savedMeetingAfterUpdate.getEndTime(), mockLocationDTO2, mockAttendeeDTOs
+                meetingIdToUpdate, updateRequest.title(), null, null , null, null
         );
-
-        when(meetingMapper.mapToMeetingDTO(savedMeetingAfterUpdate)).thenReturn(expectedResponse);
+        when(meetingMapper.mapToMeetingDTO(any(Meeting.class))).thenReturn(expectedResponse);
 
         assertDoesNotThrow(() -> {
             meetingService.updateMeeting(meetingIdToUpdate, updateRequest);
         }, "Update should succeed when duplicates & attendee conflict & location conflict checks only find the meeting being updated itself.");
 
-
+        verify(meetingRepository).findById(meetingIdToUpdate);
         verify(meetingRepository).findByLocation_idAndStartTimeAndEndTime(
                 defaultMeeting.getLocation().getId(), defaultMeeting.getStartTime(), defaultMeeting.getEndTime());
         verify(meetingRepository).findByLocation_idAndStartTimeBeforeAndEndTimeAfter(

@@ -243,25 +243,24 @@ public class LocationServiceTest {
 
     @Test
     void updateLocation_shouldReturnUpdatedLocationDTO_whenSomeFieldsUpdated() {
-        // Arrange
         Long locationId = DEFAULT_LOCATION_ID;
+
         UpdateLocationRequestDTO updateRequest = new UpdateLocationRequestDTO(
-                defaultUpdateRequest.name(),
+                "Updated Room",
                 null,
-                null, // not updated
-                defaultUpdateRequest.workingEndTime()
+                null,
+                LocalTime.of(20, 0)
         );
 
         Location existingLocation = new Location();
         existingLocation.setId(locationId);
-        existingLocation.setName(defaultLocation.getName());
-        existingLocation.setWorkingStartTime(defaultLocation.getWorkingStartTime());
-        existingLocation.setWorkingEndTime(defaultLocation.getWorkingEndTime());
+        existingLocation.setName("Original Room");
+        existingLocation.setCapacity(25);
+        existingLocation.setWorkingStartTime(LocalTime.of(8, 0));
+        existingLocation.setWorkingEndTime(LocalTime.of(18, 0));
 
         when(locationRepository.findById(locationId)).thenReturn(Optional.of(existingLocation));
         when(locationRepository.findByName(updateRequest.name())).thenReturn(Optional.empty());
-
-        // - Mimic the updateLocationFromDto method behavior
         doAnswer(invocation -> {
             UpdateLocationRequestDTO dtoArg = invocation.getArgument(0);
             Location entityArg = invocation.getArgument(1);
@@ -269,104 +268,53 @@ public class LocationServiceTest {
             if (dtoArg.capacity() != null) entityArg.setCapacity(dtoArg.capacity());
             if (dtoArg.workingStartTime() != null) entityArg.setWorkingStartTime(dtoArg.workingStartTime());
             if (dtoArg.workingEndTime() != null) entityArg.setWorkingEndTime(dtoArg.workingEndTime());
-            return null; // Void methods return null in doAnswer
-        }).when(locationMapper).updateLocationFromDto(eq(updateRequest), eq(existingLocation));
-
-        // - Prepare what save() method will return
-        Location savedLocationAfterUpdate = new Location();
-        savedLocationAfterUpdate.setId(locationId);
-        savedLocationAfterUpdate.setName(updateRequest.name());
-        savedLocationAfterUpdate.setCapacity(existingLocation.getCapacity());
-        savedLocationAfterUpdate.setWorkingStartTime(existingLocation.getWorkingStartTime());
-        savedLocationAfterUpdate.setWorkingEndTime(updateRequest.workingEndTime());
-
-        // - Capture modified location entity
-        ArgumentCaptor<Location> locationCaptor = ArgumentCaptor.forClass(Location.class);
-        when(locationRepository.save(locationCaptor.capture())).thenReturn(savedLocationAfterUpdate);
+            return null;
+        }).when(locationMapper).updateLocationFromDto(eq(updateRequest), any(Location.class));
 
         LocationDTO expectedResponse = new LocationDTO(
-                savedLocationAfterUpdate.getId(), savedLocationAfterUpdate.getName(), savedLocationAfterUpdate.getCapacity()
+                locationId,
+                "Updated Room",
+                25
         );
-
-        when(locationMapper.mapToLocationDTO(savedLocationAfterUpdate)).thenReturn(expectedResponse);
-
-        // Act
+        when(locationMapper.mapToLocationDTO(any(Location.class))).thenReturn(expectedResponse);
 
         LocationDTO result = locationService.updateLocation(locationId, updateRequest);
 
-        // Assert
+        ArgumentCaptor<Location> entityCaptor = ArgumentCaptor.forClass(Location.class);
+        verify(locationMapper).mapToLocationDTO(entityCaptor.capture());
+        Location capturedEntity = entityCaptor.getValue();
+        assertNotNull(capturedEntity);
+        assertEquals("Updated Room", capturedEntity.getName());
+        assertEquals(25, capturedEntity.getCapacity());
+        assertEquals(LocalTime.of(8, 0), capturedEntity.getWorkingStartTime());
+        assertEquals(LocalTime.of(20, 0), capturedEntity.getWorkingEndTime());
 
-        assertNotNull(result);
-        assertEquals(expectedResponse.id(), result.id());
-        assertEquals(expectedResponse.name(), result.name());
-        assertEquals(expectedResponse.capacity(), result.capacity());
+        assertEquals(expectedResponse, result);
 
-        // - Check updated values from captured location entity
-        Location capturedLocationForSave = locationCaptor.getValue();
-
-        assertNotNull(capturedLocationForSave);
-        assertEquals(locationId, capturedLocationForSave.getId());
-
-        if (updateRequest.name() != null) {
-            assertEquals(updateRequest.name(), capturedLocationForSave.getName(),
-                    "Location name was not updated correctly in the entity for save.");
-        } else {
-            assertEquals(existingLocation.getName(), capturedLocationForSave.getName(),
-                    "Location name should not have changed when DTO value was null.");
-        }
-
-        if (updateRequest.capacity() != null) {
-            assertEquals(updateRequest.capacity(), capturedLocationForSave.getCapacity(),
-                    "Location capacity was not updated correctly in the entity for save.");
-        } else {
-            assertEquals(existingLocation.getCapacity(), capturedLocationForSave.getCapacity(),
-                    "Location capacity should not have changed when DTO value was null.");
-        }
-
-        if (updateRequest.workingStartTime() != null) {
-            assertEquals(updateRequest.workingStartTime(), capturedLocationForSave.getWorkingStartTime(),
-                    "Working start time was not updated correctly in the entity for save.");
-        } else {
-            assertEquals(existingLocation.getWorkingStartTime(), capturedLocationForSave.getWorkingStartTime(),
-                    "Working start time should not have changed when DTO value was null.");
-        }
-
-        if (updateRequest.workingEndTime() != null) {
-            assertEquals(updateRequest.workingEndTime(), capturedLocationForSave.getWorkingEndTime(), "Working end time was not updated correctly in the entity for save.");
-        } else {
-            assertEquals(existingLocation.getWorkingEndTime(), capturedLocationForSave.getWorkingEndTime(), "Working end time should not have changed when DTO value was null.");
-        }
-
-        // - Verify
         verify(locationRepository).findById(locationId);
-        verify(locationRepository).findByName(updateRequest.name());
-        verify(locationMapper).updateLocationFromDto(eq(updateRequest), eq(existingLocation));
-        verify(locationRepository).save(capturedLocationForSave);
-        verify(locationMapper).mapToLocationDTO(savedLocationAfterUpdate);
+        verify(locationRepository).findByName("Updated Room");
     }
-
 
     @Test
     void updateLocation_shouldReturnUpdatedLocationDTO_whenAllFieldsUpdated() {
-        // Arrange
         Long locationId = DEFAULT_LOCATION_ID;
+
         UpdateLocationRequestDTO updateRequest = new UpdateLocationRequestDTO(
-                defaultUpdateRequest.name(),
-                defaultUpdateRequest.capacity(),
-                defaultUpdateRequest.workingStartTime(),
-                defaultUpdateRequest.workingEndTime()
+                "Fully Updated Room",
+                50,
+                LocalTime.of(7, 0),
+                LocalTime.of(19, 0)
         );
 
         Location existingLocation = new Location();
         existingLocation.setId(locationId);
-        existingLocation.setName(defaultLocation.getName());
-        existingLocation.setWorkingStartTime(defaultLocation.getWorkingStartTime());
-        existingLocation.setWorkingEndTime(defaultLocation.getWorkingEndTime());
+        existingLocation.setName("Original Room");
+        existingLocation.setCapacity(10);
+        existingLocation.setWorkingStartTime(LocalTime.of(9, 0));
+        existingLocation.setWorkingEndTime(LocalTime.of(17, 0));
 
         when(locationRepository.findById(locationId)).thenReturn(Optional.of(existingLocation));
         when(locationRepository.findByName(updateRequest.name())).thenReturn(Optional.empty());
-
-        // - Mimic the updateLocationFromDto method behavior
         doAnswer(invocation -> {
             UpdateLocationRequestDTO dtoArg = invocation.getArgument(0);
             Location entityArg = invocation.getArgument(1);
@@ -374,128 +322,75 @@ public class LocationServiceTest {
             if (dtoArg.capacity() != null) entityArg.setCapacity(dtoArg.capacity());
             if (dtoArg.workingStartTime() != null) entityArg.setWorkingStartTime(dtoArg.workingStartTime());
             if (dtoArg.workingEndTime() != null) entityArg.setWorkingEndTime(dtoArg.workingEndTime());
-            return null; // Void methods return null in doAnswer
-        }).when(locationMapper).updateLocationFromDto(eq(updateRequest), eq(existingLocation));
-
-        // - Prepare what save() method will return
-        Location savedLocationAfterUpdate = new Location();
-        savedLocationAfterUpdate.setId(locationId);
-        savedLocationAfterUpdate.setName(updateRequest.name());
-        savedLocationAfterUpdate.setCapacity(updateRequest.capacity());
-        savedLocationAfterUpdate.setWorkingStartTime(updateRequest.workingStartTime());
-        savedLocationAfterUpdate.setWorkingEndTime(updateRequest.workingEndTime());
-
-        // - Capture modified location entity
-        ArgumentCaptor<Location> locationCaptor = ArgumentCaptor.forClass(Location.class);
-        when(locationRepository.save(locationCaptor.capture())).thenReturn(savedLocationAfterUpdate);
+            return null;
+        }).when(locationMapper).updateLocationFromDto(eq(updateRequest), any(Location.class));
 
         LocationDTO expectedResponse = new LocationDTO(
-                savedLocationAfterUpdate.getId(), savedLocationAfterUpdate.getName(), savedLocationAfterUpdate.getCapacity()
+                locationId,
+                updateRequest.name(),
+                updateRequest.capacity()
         );
 
-        when(locationMapper.mapToLocationDTO(savedLocationAfterUpdate)).thenReturn(expectedResponse);
-
-        // Act
+        when(locationMapper.mapToLocationDTO(any(Location.class))).thenReturn(expectedResponse);
 
         LocationDTO result = locationService.updateLocation(locationId, updateRequest);
 
-        // Assert
+        ArgumentCaptor<Location> entityCaptor = ArgumentCaptor.forClass(Location.class);
+        verify(locationMapper).mapToLocationDTO(entityCaptor.capture());
+        Location capturedEntity = entityCaptor.getValue();
+        assertNotNull(capturedEntity);
+        assertEquals("Fully Updated Room", capturedEntity.getName());
+        assertEquals(50, capturedEntity.getCapacity());
+        assertEquals(LocalTime.of(7, 0), capturedEntity.getWorkingStartTime());
+        assertEquals(LocalTime.of(19, 0), capturedEntity.getWorkingEndTime());
 
-        assertNotNull(result);
-        assertEquals(expectedResponse.id(), result.id());
-        assertEquals(expectedResponse.name(), result.name());
-        assertEquals(expectedResponse.capacity(), result.capacity());
+        assertEquals(expectedResponse, result);
 
-        // - Check updated values from captured location entity
-        Location capturedLocationForSave = locationCaptor.getValue();
-
-        assertNotNull(capturedLocationForSave);
-        assertEquals(locationId, capturedLocationForSave.getId());
-
-        if (updateRequest.name() != null) {
-            assertEquals(updateRequest.name(), capturedLocationForSave.getName(),
-                    "Location name was not updated correctly in the entity for save.");
-        } else {
-            assertEquals(existingLocation.getName(), capturedLocationForSave.getName(),
-                    "Location name should not have changed when DTO value was null.");
-        }
-
-        if (updateRequest.capacity() != null) {
-            assertEquals(updateRequest.capacity(), capturedLocationForSave.getCapacity(),
-                    "Location capacity was not updated correctly in the entity for save.");
-        } else {
-            assertEquals(existingLocation.getCapacity(), capturedLocationForSave.getCapacity(),
-                    "Location capacity should not have changed when DTO value was null.");
-        }
-
-        if (updateRequest.workingStartTime() != null) {
-            assertEquals(updateRequest.workingStartTime(), capturedLocationForSave.getWorkingStartTime(),
-                    "Working start time was not updated correctly in the entity for save.");
-        } else {
-            assertEquals(existingLocation.getWorkingStartTime(), capturedLocationForSave.getWorkingStartTime(),
-                    "Working start time should not have changed when DTO value was null.");
-        }
-
-        if (updateRequest.workingEndTime() != null) {
-            assertEquals(updateRequest.workingEndTime(), capturedLocationForSave.getWorkingEndTime(), "Working end time was not updated correctly in the entity for save.");
-        } else {
-            assertEquals(existingLocation.getWorkingEndTime(), capturedLocationForSave.getWorkingEndTime(), "Working end time should not have changed when DTO value was null.");
-        }
-
-        // - Verify
         verify(locationRepository).findById(locationId);
         verify(locationRepository).findByName(updateRequest.name());
-        verify(locationMapper).updateLocationFromDto(eq(updateRequest), eq(existingLocation));
-        verify(locationRepository).save(capturedLocationForSave);
-        verify(locationMapper).mapToLocationDTO(savedLocationAfterUpdate);
     }
-
 
     @Test
     void updateLocation_shouldSucceed_whenDuplicatesCheckReturnsOnlyTheLocationBeingUpdated() {
-        // Arrange
         Long locationId = DEFAULT_LOCATION_ID;
+        String originalName = "Original Name";
+
         UpdateLocationRequestDTO updateRequest = new UpdateLocationRequestDTO(
-                null, // Name is NOT changed
-                defaultUpdateRequest.capacity(),
-                defaultUpdateRequest.workingStartTime(),
-                defaultUpdateRequest.workingEndTime()
+                null,
+                15,
+                null,
+                null
         );
 
         Location existingLocation = new Location();
         existingLocation.setId(locationId);
-        existingLocation.setName(defaultLocation.getName());
-        existingLocation.setWorkingStartTime(defaultLocation.getWorkingStartTime());
-        existingLocation.setWorkingEndTime(defaultLocation.getWorkingEndTime());
+        existingLocation.setName(originalName);
+        existingLocation.setCapacity(10);
 
         when(locationRepository.findById(locationId)).thenReturn(Optional.of(existingLocation));
-        // Duplicates check returns the location being updated
-        when(locationRepository.findByName(existingLocation.getName())).thenReturn(Optional.of(existingLocation));
-
-        doNothing().when(locationMapper).updateLocationFromDto(updateRequest, existingLocation);
-
-        // - Prepare what save() method will return
-        Location savedLocationAfterUpdate = new Location();
-        savedLocationAfterUpdate.setId(locationId);
-        savedLocationAfterUpdate.setName(existingLocation.getName());
-        savedLocationAfterUpdate.setCapacity(updateRequest.capacity());
-        savedLocationAfterUpdate.setWorkingStartTime(updateRequest.workingStartTime());
-        savedLocationAfterUpdate.setWorkingEndTime(updateRequest.workingEndTime());
-
-        when(locationRepository.save(any(Location.class))).thenReturn(savedLocationAfterUpdate);
+        when(locationRepository.findByName(originalName)).thenReturn(Optional.of(existingLocation));
+        doAnswer(invocation -> {
+            UpdateLocationRequestDTO dtoArg = invocation.getArgument(0);
+            Location entityArg = invocation.getArgument(1);
+            if (dtoArg.capacity() != null) entityArg.setCapacity(dtoArg.capacity());
+            return null;
+        }).when(locationMapper).updateLocationFromDto(eq(updateRequest), any(Location.class));
 
         LocationDTO expectedResponse = new LocationDTO(
-                savedLocationAfterUpdate.getId(), savedLocationAfterUpdate.getName(), savedLocationAfterUpdate.getCapacity()
+                locationId,
+                originalName,
+                15
         );
-
-        when(locationMapper.mapToLocationDTO(savedLocationAfterUpdate)).thenReturn(expectedResponse);
+        when(locationMapper.mapToLocationDTO(any(Location.class))).thenReturn(expectedResponse);
 
         assertDoesNotThrow(() -> {
             locationService.updateLocation(locationId, updateRequest);
-        }, "Update should succeed when duplicates check only finds the location being updated itself.");
+        }, "Update should succeed when duplicate check finds the same location.");
 
-        // - Verify
-        verify(locationRepository).findByName(existingLocation.getName());
+        verify(locationRepository).findById(locationId);
+        verify(locationRepository).findByName(originalName);
+        verify(locationMapper).updateLocationFromDto(eq(updateRequest), any(Location.class));
+        verify(locationMapper).mapToLocationDTO(any(Location.class));
     }
 
     @Test

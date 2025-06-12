@@ -59,10 +59,12 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
         location1 = new Location("Room 1", 10);
         location1.setWorkingStartTime(LocalTime.of(8, 0));
         location1.setWorkingEndTime(LocalTime.of(18, 0));
+        location1 = locationRepository.save(location1);
+
         location2 = new Location("Room 2", 2);
         location2.setWorkingStartTime(LocalTime.of(7, 0));
         location2.setWorkingEndTime(LocalTime.of(17, 0));
-        locationRepository.saveAll(List.of(location1, location2));
+        location2 = locationRepository.save(location2);
 
         attendee1 = new Attendee(
                 "Attendee One",
@@ -72,6 +74,8 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
         );
         attendee1.setWorkingStartTime(LocalTime.of(9, 0));
         attendee1.setWorkingEndTime(LocalTime.of(17, 0));
+        attendee1 = attendeeRepository.save(attendee1);
+
         attendee2 = new Attendee(
                 "Attendee Two",
                 "attendeetwo@test.com",
@@ -80,6 +84,8 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
         );
         attendee2.setWorkingStartTime(LocalTime.of(9, 0));
         attendee2.setWorkingEndTime(LocalTime.of(17, 0));
+        attendee2 = attendeeRepository.save(attendee2);
+
         attendee3 = new Attendee(
                 "Attendee Three",
                 "attendeethree@test.com",
@@ -88,7 +94,7 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
         );
         attendee3.setWorkingStartTime(LocalTime.of(8, 0));
         attendee3.setWorkingEndTime(LocalTime.of(16, 0));
-        attendeeRepository.saveAll(List.of(attendee1, attendee2, attendee3));
+        attendee3 = attendeeRepository.save(attendee3);
 
         meeting1 = new Meeting(
                 "Meeting One Title",
@@ -97,6 +103,8 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
                 location1
         );
         meeting1.addAttendee(attendee1);
+        meeting1 = meetingRepository.save(meeting1);
+
         meeting2 = new Meeting(
                 "Meeting Two Title",
                 DEFAULT_TIME.plusMinutes(30),
@@ -104,7 +112,7 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
                 location2
         );
         meeting2.addAttendee(attendee2);
-        meetingRepository.saveAll(List.of(meeting1, meeting2));
+        meeting2 = meetingRepository.save(meeting2);
     }
 
     private static Stream<Arguments> invalidMeetingCreationArguments() {
@@ -541,13 +549,13 @@ public class MeetingServiceIntegrationTest extends AbstractIntegrationTest {
     void shouldThrowOptimisticLockingException_whenUpdatingStaleMeeting() {
         Meeting initialMeeting = new Meeting(
                 "Initial Meeting",
-                DEFAULT_TIME,
                 DEFAULT_TIME.plusHours(1),
+                DEFAULT_TIME.plusHours(2),
                 location1
         );
         initialMeeting.addAttendee(attendee1);
-        Meeting savedoInitialMeeting = meetingRepository.save(initialMeeting);
-        Long meetingId = savedoInitialMeeting.getId();
+        Meeting savedInitialMeeting = meetingRepository.save(initialMeeting);
+        Long meetingId = savedInitialMeeting.getId();
 
         // User 1 and User 2 fetch the meeting at the same time
         Meeting meetingUser1 = meetingRepository.findById(meetingId).orElseThrow();

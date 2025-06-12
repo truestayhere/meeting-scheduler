@@ -126,12 +126,10 @@ public class AttendeeService {
             log.debug("Password updated for attendee ID: {}", id);
         }
 
-        // --- Save the Attendee ---
-
-        Attendee savedAttendee = attendeeRepository.save(existingAttendee);
+        // --- Return Updated Attendee ---
 
         log.info("Successfully updated attendee with ID: {}", id);
-        return attendeeMapper.mapToAttendeeDTO(savedAttendee);
+        return attendeeMapper.mapToAttendeeDTO(existingAttendee);
     }
 
 

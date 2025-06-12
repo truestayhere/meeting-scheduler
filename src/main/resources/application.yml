@@ -1,0 +1,64 @@
+# ===============================================
+# ================ DEFAULT ======================
+# ===============================================
+spring:
+  application:
+    name: meeting-scheduler
+
+  # --- Database Connection ---
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/meeting_scheduler_db}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+
+  # --- JPA Configuration ---
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        format_sql: true
+
+# --- JWT Configuration ---
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  issuer: com.truestayhere.meeting_scheduler
+  expiration-minutes: 60
+
+---
+
+# ===============================================
+# ==        Development Profile (dev)          ==
+# ===============================================
+spring:
+  config:
+    activate:
+      on-profile: "dev"
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  logging:
+    level:
+      com.truestayhere.meeting-scheduler: DEBUG
+      org.hibernate.SQL: DEBUG
+      org.springframework.web: DEBUG
+
+---
+
+# ===============================================
+# ==        Production Profile (prod)          ==
+# ===============================================
+spring:
+  config:
+    activate:
+      on-profile: "prod"
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  logging:
+    level:
+      root: INFO
+      com.truestayhere.meeting_scheduler: INFO

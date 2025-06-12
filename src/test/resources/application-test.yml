@@ -1,0 +1,19 @@
+# =======================================
+# =============== TEST =================
+# =======================================
+
+# --- JPA Configuration ---
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+# --- JWT Configuration ---
+jwt:
+  secret-key: a-very-secure-and-long-secret-key-just-for-testing-purposes-12345
+
+# --- Logging Configuration ---
+logging:
+  level:
+    com.truestayhere.meeting_scheduler: INFO

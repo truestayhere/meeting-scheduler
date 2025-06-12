@@ -58,10 +58,12 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
         location1 = new Location("Room 1", 10);
         location1.setWorkingStartTime(LocalTime.of(9, 0));
         location1.setWorkingEndTime(LocalTime.of(17, 0));
+        location1 = locationRepository.save(location1);
+
         location2 = new Location("Room 2", 2);
         location2.setWorkingStartTime(LocalTime.of(10, 0));
         location2.setWorkingEndTime(LocalTime.of(18, 0));
-        locationRepository.saveAll(List.of(location1, location2));
+        location2 = locationRepository.save(location2);
 
         attendee1 = new Attendee(
                 "Attendee One",
@@ -71,6 +73,8 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
         );
         attendee1.setWorkingStartTime(LocalTime.of(9, 0));
         attendee1.setWorkingEndTime(LocalTime.of(17, 0));
+        attendee1 = attendeeRepository.save(attendee1);
+
         attendee2 = new Attendee(
                 "Attendee Two",
                 "attendeetwo@test.com",
@@ -79,6 +83,8 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
         );
         attendee2.setWorkingStartTime(LocalTime.of(9, 0));
         attendee2.setWorkingEndTime(LocalTime.of(17, 0));
+        attendee2 = attendeeRepository.save(attendee2);
+
         attendee3 = new Attendee(
                 "Attendee Three",
                 "attendeethree@test.com",
@@ -87,7 +93,7 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
         );
         attendee3.setWorkingStartTime(LocalTime.of(10, 0));
         attendee3.setWorkingEndTime(LocalTime.of(18, 0));
-        attendeeRepository.saveAll(List.of(attendee1, attendee2, attendee3));
+        attendee3 = attendeeRepository.save(attendee3);
     }
 
     // getMeetingsFor...

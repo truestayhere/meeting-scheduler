@@ -199,7 +199,8 @@ public class MeetingService {
         if (requestDTO.startTime() != null) existingMeeting.setStartTime(requestDTO.startTime());
         if (requestDTO.endTime() != null) existingMeeting.setEndTime(requestDTO.endTime());
         existingMeeting.setLocation(location);
-        existingMeeting.setAttendees(attendees);
+        existingMeeting.getAttendees().clear();
+        existingMeeting.getAttendees().addAll(attendees);
 
         // --- StartBeforeEnd Check (for partial updates)
 
@@ -207,14 +208,9 @@ public class MeetingService {
             throw new IllegalArgumentException("Start time must be before end time.");
         }
 
-        // --- Save the Meeting ---
-
-        log.debug("Attempting to save updated meeting");
-
-        Meeting savedMeeting = meetingRepository.save(existingMeeting);
-
-        log.info("Successfully updated meeting with ID: {}", savedMeeting.getId());
-        return meetingMapper.mapToMeetingDTO(savedMeeting);
+        // --- Return the Updated Meeting ---
+        log.info("Successfully updated meeting with ID: {}", existingMeeting.getId());
+        return meetingMapper.mapToMeetingDTO(existingMeeting);
     }
 
     /**

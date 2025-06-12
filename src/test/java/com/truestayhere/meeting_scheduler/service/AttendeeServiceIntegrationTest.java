@@ -318,16 +318,16 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
         Location location = new Location("Room 1", 10);
         location.setWorkingStartTime(LocalTime.of(8, 0));
         location.setWorkingEndTime(LocalTime.of(18, 0));
-        locationRepository.save(location);
+        Location savedLocation = locationRepository.save(location);
 
         LocalDate date = LocalDate.of(Year.now().getValue() + 1, 8, 15);
         Meeting meeting = new Meeting(
                 "Title",
                 date.atTime(11, 0),
                 date.atTime(12, 0),
-                location
+                savedLocation
         );
-        meeting.addAttendee(attendee);
+        meeting.addAttendee(attendeeInUse);
         meetingRepository.save(meeting);
 
         String expectedErrorMessage = String.format("Attendee cannot be deleted because they are included in %d meeting(s). See details.", 1);
