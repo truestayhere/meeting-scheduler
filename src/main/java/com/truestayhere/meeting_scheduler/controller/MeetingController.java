@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,7 @@ public class MeetingController {
 
     // GET /api/meetings - Get all meetings
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<List<MeetingDTO>> getAllMeetings() {
         List<MeetingDTO> meetings = meetingService.getAllMeetings();
         return ResponseEntity.ok(meetings); // 200 OK
@@ -36,6 +38,7 @@ public class MeetingController {
 
     // GET /api/meetings/id - Get a meeting by ID
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<MeetingDTO> getMeetingById(@PathVariable Long id) {
         MeetingDTO meeting = meetingService.getMeetingById(id);
         return ResponseEntity.ok(meeting); // 200 OK
@@ -44,6 +47,7 @@ public class MeetingController {
     // GET /api/meetings/byAttendee/{attendeeId}?start=...&end=...
     // DateTimeFormat expects format like 2024-07-30T10:00:00
     @GetMapping("/byAttendee/{attendeeId}")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<List<MeetingDTO>> getMeetingsByAttendeeAndRange(
             @PathVariable Long attendeeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
@@ -54,6 +58,7 @@ public class MeetingController {
 
     // GET /api/meetings/byLocation/{locationId}?start=...&end=...
     @GetMapping("/byLocation/{locationId}")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<List<MeetingDTO>> getMeetingsByLocationAndRange(
             @PathVariable Long locationId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
@@ -64,6 +69,7 @@ public class MeetingController {
 
     // POST /api/meetings - Create a new meeting
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<MeetingDTO> createMeeting(@Valid @RequestBody CreateMeetingRequestDTO requestDTO) {
         MeetingDTO createdMeeting = meetingService.createMeeting(requestDTO);
         return new ResponseEntity<>(createdMeeting, HttpStatus.CREATED); // 201 CREATED
@@ -71,6 +77,7 @@ public class MeetingController {
 
     // PUT /api/meetings/id - Update meeting by ID
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<MeetingDTO> updateMeetingById(@PathVariable Long id, @Valid @RequestBody UpdateMeetingRequestDTO requestDTO) {
         MeetingDTO updatedMeeting = meetingService.updateMeeting(id, requestDTO);
         return ResponseEntity.ok(updatedMeeting); // 200 OK
@@ -78,19 +85,18 @@ public class MeetingController {
 
     // DELETE /api/meetings/id - Delete meeting by ID
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<Void> deleteMeetingById(@PathVariable Long id) {
         meetingService.deleteMeeting(id);
         return ResponseEntity.noContent().build(); // 204 NO CONTENT
     }
 
-
     // POST /api/meetings/suggestions - Find meeting suggestions
     @PostMapping("/suggestions")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<List<LocationTimeSlotDTO>> findMeetingSuggestions(
             @Valid @RequestBody MeetingSuggestionRequestDTO request) {
         List<LocationTimeSlotDTO> meetingSuggestions = availabilityService.findMeetingSuggestions(request);
         return ResponseEntity.ok(meetingSuggestions); // 200 OK
     }
-
-
 }

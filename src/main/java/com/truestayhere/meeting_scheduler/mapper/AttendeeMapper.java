@@ -73,6 +73,9 @@ public class AttendeeMapper {
         if (requestDTO.email() != null) {
             attendee.setEmail(requestDTO.email());
         }
+        if (requestDTO.role() != null) {
+            attendee.setRole(requestDTO.role());
+        }
         if (requestDTO.workingStartTime() != null) {
             attendee.setWorkingStartTime(requestDTO.workingStartTime());
         }

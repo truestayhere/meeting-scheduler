@@ -68,8 +68,7 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
         attendee1 = new Attendee(
                 "Attendee One",
                 "attendeeone@test.com",
-                passwordEncoder.encode("password1"),
-                "ROLE_USER"
+                passwordEncoder.encode("password1")
         );
         attendee1.setWorkingStartTime(LocalTime.of(9, 0));
         attendee1.setWorkingEndTime(LocalTime.of(17, 0));
@@ -78,8 +77,7 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
         attendee2 = new Attendee(
                 "Attendee Two",
                 "attendeetwo@test.com",
-                passwordEncoder.encode("password2"),
-                "ROLE_USER"
+                passwordEncoder.encode("password2")
         );
         attendee2.setWorkingStartTime(LocalTime.of(9, 0));
         attendee2.setWorkingEndTime(LocalTime.of(17, 0));
@@ -88,8 +86,7 @@ public class AvailabilityServiceIntegrationTest extends AbstractIntegrationTest 
         attendee3 = new Attendee(
                 "Attendee Three",
                 "attendeethree@test.com",
-                passwordEncoder.encode("password3"),
-                "ROLE_USER"
+                passwordEncoder.encode("password3")
         );
         attendee3.setWorkingStartTime(LocalTime.of(10, 0));
         attendee3.setWorkingEndTime(LocalTime.of(18, 0));

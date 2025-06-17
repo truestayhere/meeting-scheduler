@@ -7,6 +7,7 @@ import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
 import com.truestayhere.meeting_scheduler.mapper.AttendeeMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.model.Meeting;
+import com.truestayhere.meeting_scheduler.model.Role;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import com.truestayhere.meeting_scheduler.repository.MeetingRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -60,7 +61,7 @@ public class AttendeeService {
 
         // Set default role
         if (newAttendee.getRole() == null) {
-            newAttendee.setRole("ROLE_USER");
+            newAttendee.setRole(Role.USER);
         }
 
         // --- Save the Attendee ---

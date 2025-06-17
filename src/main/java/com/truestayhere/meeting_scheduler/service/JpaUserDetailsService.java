@@ -4,6 +4,7 @@ package com.truestayhere.meeting_scheduler.service;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,7 +30,7 @@ public class JpaUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
 
         // Convert an Attendee role to Spring Security GrantedAuthority
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority(attendee.getRole());
+        GrantedAuthority authority = new SimpleGrantedAuthority(attendee.getRole().getValue());
 
         // Return a Spring Security User object
         return new User(

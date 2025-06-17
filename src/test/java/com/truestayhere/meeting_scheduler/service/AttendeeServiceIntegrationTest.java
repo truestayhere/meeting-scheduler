@@ -8,6 +8,7 @@ import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.model.Location;
 import com.truestayhere.meeting_scheduler.model.Meeting;
+import com.truestayhere.meeting_scheduler.model.Role;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import com.truestayhere.meeting_scheduler.repository.LocationRepository;
 import com.truestayhere.meeting_scheduler.repository.MeetingRepository;
@@ -56,7 +57,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 "attendeename@test.com",
                 "rawPassword",
-                "ROLE_USER",
+                Role.USER,
                 LocalTime.of(9, 0),
                 LocalTime.of(17, 0)
         );
@@ -79,7 +80,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 duplicateEmail,
                 passwordEncoder.encode("password"),
-                "ROLE_USER"
+                Role.USER
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
         attendee.setWorkingEndTime(LocalTime.of(16, 30));
@@ -89,7 +90,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 duplicateEmail,
                 "rawPassword",
-                "ROLE_USER",
+                Role.USER,
                 LocalTime.of(9, 0),
                 LocalTime.of(17, 0)
         );
@@ -113,7 +114,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee One",
                 "attendeeone@test.com",
                 passwordEncoder.encode("password"),
-                "ROLE_USER"
+                Role.USER
         );
         attendee1.setWorkingStartTime(LocalTime.of(7, 30));
         attendee1.setWorkingEndTime(LocalTime.of(16, 30));
@@ -121,7 +122,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Two",
                 "attendeetwo@test.com",
                 passwordEncoder.encode("password"),
-                "ROLE_USER"
+                Role.USER
         );
         attendee2.setWorkingStartTime(LocalTime.of(7, 30));
         attendee2.setWorkingEndTime(LocalTime.of(16, 30));
@@ -167,7 +168,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 "attendeename@test.com",
                 passwordEncoder.encode("password"),
-                "ROLE_USER"
+                Role.USER
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
         attendee.setWorkingEndTime(LocalTime.of(16, 30));
@@ -226,7 +227,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 "attendeename@test.com",
                 passwordEncoder.encode("password"),
-                "ROLE_USER"
+                Role.USER
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
         attendee.setWorkingEndTime(LocalTime.of(16, 30));
@@ -237,7 +238,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 duplicateEmail,
                 passwordEncoder.encode("password"),
-                "ROLE_USER"
+                Role.USER
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
         attendee.setWorkingEndTime(LocalTime.of(16, 30));
@@ -272,7 +273,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 "attendeename@test.com",
                 passwordEncoder.encode("password"),
-                "ROLE_USER"
+                Role.USER
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
         attendee.setWorkingEndTime(LocalTime.of(16, 30));
@@ -308,7 +309,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 "attendeename@test.com",
                 passwordEncoder.encode("password"),
-                "ROLE_USER"
+                Role.USER
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
         attendee.setWorkingEndTime(LocalTime.of(16, 30));
@@ -353,7 +354,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 "attendeename@test.com",
                 passwordEncoder.encode("password"),
-                "ROLE_USER"
+                Role.USER
         );
         initialAttendee.setWorkingStartTime(LocalTime.of(7, 30));
         initialAttendee.setWorkingEndTime(LocalTime.of(16, 30));
@@ -392,7 +393,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 "attendeename@test.com",
                 "rawPassword",
-                "ROLE_USER",
+                Role.USER,
                 LocalTime.of(9, 0),
                 LocalTime.of(17, 0)
         );
@@ -423,7 +424,7 @@ public class AttendeeServiceIntegrationTest extends AbstractIntegrationTest {
                 "Attendee Name",
                 "attendeename@test.com",
                 "rawPassword",
-                "ROLE_USER",
+                Role.USER,
                 LocalTime.of(9, 0),
                 LocalTime.of(17, 0)
         );

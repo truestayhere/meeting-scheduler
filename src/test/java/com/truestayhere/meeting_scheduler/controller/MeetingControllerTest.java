@@ -312,7 +312,7 @@ public class MeetingControllerTest {
     // === CREATE ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void createMeeting_whenValidInput_shouldReturn201CreatedAndMeetingResponse() throws Exception {
         when(meetingService.createMeeting(any(CreateMeetingRequestDTO.class))).thenReturn(meetingDTO1);
 
@@ -325,7 +325,7 @@ public class MeetingControllerTest {
 
     @ParameterizedTest(name = "Validation Error: {0}")
     @MethodSource("invalidCreateRequestProvider")
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void createMeeting_whenInvalidInput_shouldReturn400BadRequest(
             String testCaseDescription,
             CreateMeetingRequestDTO invalidRequest,
@@ -341,7 +341,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void createMeeting_whenLocationNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentLocationId = createRequest.locationId();
         String expectedErrorMessage = "Location not found with ID: " + nonExistentLocationId;
@@ -356,7 +356,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void createMeeting_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentAttendeeId = attendeeDTO1.id();
         String expectedErrorMessage = "Attendee not found with ID: " + nonExistentAttendeeId;
@@ -371,7 +371,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void createMeeting_whenMeetingConflict_shouldReturn409Conflict() throws Exception {
         String expectedErrorMessage = "Database constraint violation occurred.";
         when(meetingService.createMeeting(any(CreateMeetingRequestDTO.class)))
@@ -385,7 +385,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void createMeeting_whenInvalidDateTimeFormatInRequest_shouldReturn400BadRequest() throws Exception {
         String malformedJsonRequest = """
                 {
@@ -410,7 +410,7 @@ public class MeetingControllerTest {
     // === GET ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAllMeetings_shouldReturn200OkAndListOfMeetings() throws Exception {
         List<MeetingDTO> expectedMeetings = List.of(meetingDTO1, meetingDTO2);
 
@@ -424,7 +424,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAllMeetings_whenNoMeetings_shouldReturn200OkAndEmptyList() throws Exception {
         List<MeetingDTO> expectedMeetings = List.of();
 
@@ -438,7 +438,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingById_whenMeetingExists_shouldReturn200OkAndMeetingResponse() throws Exception {
         Long meetingId = meetingDTO1.id();
         when(meetingService.getMeetingById(meetingId)).thenReturn(meetingDTO1);
@@ -451,7 +451,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingById_whenMeetingNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentMeetingId = 0L;
         String expectedErrorMessage = "Meeting not found with ID: " + nonExistentMeetingId;
@@ -466,7 +466,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingById_whenIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception {
         String invalidId = "abc";
         String expectedErrorMessage = "Parameter 'id' should be of type 'Long' but received value: 'abc'.";
@@ -482,7 +482,7 @@ public class MeetingControllerTest {
     // === UPDATE ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void updateMeetingById_whenValidInputAndMeetingExists_shouldReturn200OkAndUpdatedMeetingResponse() throws Exception {
         Long meetingIdToUpdate = meetingDTO1.id();
 
@@ -506,7 +506,7 @@ public class MeetingControllerTest {
 
     @ParameterizedTest(name = "Partial Update: {0}")
     @MethodSource("partialUpdateMeetingRequestProvider")
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void updateMeetingById_whenPartialDataProvided_shouldCallServiceWithCorrectPartialDTO(
             String testCaseDescription,
             UpdateMeetingRequestDTO requestDto) throws Exception {
@@ -533,7 +533,7 @@ public class MeetingControllerTest {
 
     @ParameterizedTest(name = "Validation Error: {0}")
     @MethodSource("invalidUpdateRequestProvider")
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void updateMeeting_whenInvalidInput_shouldReturn400BadRequest(
             String testCaseDescription,
             UpdateMeetingRequestDTO invalidRequest,
@@ -550,7 +550,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void updateMeetingById_whenMeetingNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentMeetingId = 0L;
         String expectedErrorMessage = "Meeting not found with ID: " + nonExistentMeetingId;
@@ -564,7 +564,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void updateMeetingById_whenLocationNotFound_shouldReturn404NotFound() throws Exception {
         Long meetingIdToUpdate = meetingDTO1.id();
         Long nonExistentLocationId = 0L;
@@ -579,7 +579,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void updateMeetingById_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception {
         Long meetingIdToUpdate = meetingDTO1.id();
         Long nonExistentAttendeeId = 0L;
@@ -594,7 +594,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void updateMeetingById_whenMeetingConflict_shouldReturn409Conflict() throws Exception {
         Long meetingIdToUpdate = meetingDTO1.id();
         String expectedErrorMessage = "Database constraint violation occurred.";
@@ -609,7 +609,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void updateMeetingById_whenIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception {
         String invalidId = "abc";
         String expectedErrorMessage = "Parameter 'id' should be of type 'Long' but received value: 'abc'.";
@@ -624,7 +624,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void updateMeetingById_whenInvalidDateTimeFormatInRequest_shouldReturn400BadRequest() throws Exception {
         Long meetingIdToUpdate = meetingDTO1.id();
         String malformedJsonRequest = """
@@ -651,7 +651,7 @@ public class MeetingControllerTest {
     // === DELETE ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void deleteMeetingById_whenMeetingExists_shouldReturn204NoContent() throws Exception {
         Long meetingIdToDelete = attendeeDTO1.id();
         doNothing().when(meetingService).deleteMeeting(meetingIdToDelete);
@@ -665,7 +665,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void deleteMeetingById_whenMeetingNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentMeetingId = 0L;
         String expectedErrorMessage = "Meeting not found with ID: " + nonExistentMeetingId;
@@ -679,7 +679,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void deleteMeetingById_whenIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception {
         String invalidId = "abc";
         String expectedErrorMessage = "Parameter 'id' should be of type 'Long' but received value: 'abc'.";
@@ -696,7 +696,7 @@ public class MeetingControllerTest {
     // === GET BY ATTENDEE ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingsByAttendeeAndRange_whenValidInputAndAttendeeExists_shouldReturn200OkAndListOfMeetings() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
@@ -712,7 +712,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingsByAttendeeAndRange_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentAttendeeId = 0L;
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
@@ -728,7 +728,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingsByAttendeeAndRange_whenMissingTimeParams_shouldReturn400BadRequest() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         String expectedErrorMessage = "Required parameter 'start' of type 'LocalDateTime' is missing.";
@@ -746,7 +746,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingsByAttendeeAndRange_whenInvalidDateTimeFormat_shouldReturn400BadRequest() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         String invalidDateTimeStr = "30-08-2025T10:00:00";
@@ -764,7 +764,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingsByAttendeeAndRange_whenAttendeeIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception {
         String invalidId = "abc";
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
@@ -786,7 +786,7 @@ public class MeetingControllerTest {
     // === GET BY LOCATION ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingsByLocationAndRange_whenValidInputAndLocationExists_shouldReturn200OkAndListOfMeetings() throws Exception {
         Long locationId = locationDTO1.id();
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
@@ -802,7 +802,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingsByLocationAndRange_whenLocationNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentLocationId = 0L;
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
@@ -818,7 +818,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingsByLocationAndRange_whenMissingTimeParams_shouldReturn400BadRequest() throws Exception {
         Long locationId = locationDTO1.id();
         String expectedErrorMessage = "Required parameter 'start' of type 'LocalDateTime' is missing.";
@@ -836,7 +836,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingsByLocationAndRange_whenInvalidDateTimeFormat_shouldReturn400BadRequest() throws Exception {
         Long locationId = locationDTO1.id();
         String invalidDateTimeStr = "30-08-2025T10:00:00";
@@ -854,7 +854,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getMeetingsByLocationAndRange_whenLocationIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception {
         String invalidId = "abc";
         LocalDateTime rangeStart = DEFAULT_RANGE_START;
@@ -876,7 +876,7 @@ public class MeetingControllerTest {
     // === MEETING SUGGESTIONS ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void findMeetingSuggestions_whenValidRequest_shouldReturn200OkAndListOfSuggestions() throws Exception {
         Set<Long> attendeeIds = Set.of(attendeeDTO1.id(), attendeeDTO2.id());
         Integer durationMinutes = 30;
@@ -919,7 +919,7 @@ public class MeetingControllerTest {
 
     @ParameterizedTest(name = "Validation Error: {0}")
     @MethodSource("invalidMeetingSuggestionsRequestProvider")
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void findMeetingSuggestions_whenInvalidInput_shouldReturn400BadRequest(
             String testCaseDescription,
             MeetingSuggestionRequestDTO invalidRequest,
@@ -934,7 +934,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void findMeetingSuggestions_whenInvalidDateFormatInRequest_shouldReturn400BadRequest() throws Exception {
         String malformedJsonRequest = """
                 {
@@ -955,7 +955,7 @@ public class MeetingControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void findMeetingSuggestions_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentAttendeeId = attendeeDTO1.id();
         Integer durationMinutes = 30;

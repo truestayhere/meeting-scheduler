@@ -5,6 +5,7 @@ import com.truestayhere.meeting_scheduler.dto.request.LoginRequestDTO;
 import com.truestayhere.meeting_scheduler.dto.response.LoginResponseDTO;
 import com.truestayhere.meeting_scheduler.service.TokenService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

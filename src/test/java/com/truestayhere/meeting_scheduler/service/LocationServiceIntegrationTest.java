@@ -260,8 +260,7 @@ public class LocationServiceIntegrationTest extends AbstractIntegrationTest {
         Attendee attendee = new Attendee(
                 "Attendee Name",
                 "attendeename@test.com",
-                passwordEncoder.encode("password"),
-                "ROLE_USER"
+                passwordEncoder.encode("password")
         );
         attendee.setWorkingStartTime(LocalTime.of(7, 30));
         attendee.setWorkingEndTime(LocalTime.of(16, 30));

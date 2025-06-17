@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -29,6 +30,7 @@ public class AttendeeController {
 
     // GET /api/attendees - Get all attendees
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<List<AttendeeDTO>> getAllAttendees() {
         List<AttendeeDTO> attendees = attendeeService.getAllAttendees();
         return ResponseEntity.ok(attendees); // Returns 200 OK status codes with the list of attendees DTOs
@@ -37,6 +39,7 @@ public class AttendeeController {
 
     // GET /api/attendees/id - Get attendee by ID
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<AttendeeDTO> getAttendeeById(@PathVariable Long id) {
         AttendeeDTO attendee = attendeeService.getAttendeeById(id);
         return ResponseEntity.ok(attendee);
@@ -44,6 +47,7 @@ public class AttendeeController {
 
     // POST api/attendees - Create a new attendee
     @PostMapping
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<AttendeeDTO> createAttendee(@Valid @RequestBody CreateAttendeeRequestDTO requestDTO) {
         // @Valid tells Spring that if the input is not valid, throw MethodArgumentNotValidException automatically
         // @RequestBody tells Spring to deserialize the JSON request body into the DTO
@@ -53,6 +57,7 @@ public class AttendeeController {
 
     // PUT api/attendees/id - Update attendee by ID
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<AttendeeDTO> updateAttendee(@PathVariable Long id, @Valid @RequestBody UpdateAttendeeRequestDTO requestDTO) {
         AttendeeDTO updatedAttendee = attendeeService.updateAttendee(id, requestDTO);
         return ResponseEntity.ok(updatedAttendee); // Returns 200 OK status code with location DTO
@@ -60,6 +65,7 @@ public class AttendeeController {
 
     // DELETE api/attendees/id - Delete attendee by ID
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Void> deleteAttendee(@PathVariable Long id) {
         attendeeService.deleteAttendee(id);
         return ResponseEntity.noContent().build(); // Returns 204 NO CONTENT status code with no response body
@@ -67,6 +73,7 @@ public class AttendeeController {
 
     // GET /api/attendees/id/availability?date=YYYY-MM-DD - Get available time slots for attendee
     @GetMapping("/{id}/availability")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<List<AvailableSlotDTO>> getAttendeeAvailability(
             @PathVariable Long id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -77,6 +84,7 @@ public class AttendeeController {
 
     // POST /api/attendees/common-availability - Get common available time slots for attendees
     @PostMapping("/common-availability")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
     public ResponseEntity<List<AvailableSlotDTO>> findCommonAttendeeAvailability(
             @Valid @RequestBody CommonAvailabilityRequestDTO request) {
         List<AvailableSlotDTO> commonSlots = availabilityService.getCommonAttendeeAvailability(request);

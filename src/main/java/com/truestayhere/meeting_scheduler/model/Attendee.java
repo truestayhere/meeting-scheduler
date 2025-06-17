@@ -33,7 +33,8 @@ public class Attendee {
     private String password;
 
     @Column(nullable = false)
-    private String role = "ROLE_USER";
+    @Enumerated(EnumType.STRING)
+    private Role role;
 
     @Column(name = "working_start_time")
     private LocalTime workingStartTime;
@@ -54,11 +55,11 @@ public class Attendee {
         this.name = name;
         this.email = email;
         this.password = password;
-        this.role = "ROLE_USER"; // Default role
+        this.role = Role.USER; // Default role
     }
 
     // Constructor that also takes the role
-    public Attendee(String name, String email, String password, String role) {
+    public Attendee(String name, String email, String password, Role role) {
         this.name = name;
         this.email = email;
         this.password = password;

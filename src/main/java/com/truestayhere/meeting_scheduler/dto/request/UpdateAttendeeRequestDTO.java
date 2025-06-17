@@ -1,6 +1,7 @@
 package com.truestayhere.meeting_scheduler.dto.request;
 
 import com.truestayhere.meeting_scheduler.dto.validation.ValidWorkingHours;
+import com.truestayhere.meeting_scheduler.model.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 
@@ -19,7 +20,7 @@ public record UpdateAttendeeRequestDTO(
         @Size(min = 8, message = "Password must be at leat 8 characters long.")
         String password,
 
-        String role,
+        Role role,
 
         LocalTime workingStartTime,
         LocalTime workingEndTime

@@ -11,6 +11,7 @@ import com.truestayhere.meeting_scheduler.dto.response.AvailableSlotDTO;
 import com.truestayhere.meeting_scheduler.exception.GlobalExceptionHandler;
 import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
 import com.truestayhere.meeting_scheduler.helper.AttendeeTestHelper;
+import com.truestayhere.meeting_scheduler.model.Role;
 import com.truestayhere.meeting_scheduler.service.AttendeeService;
 import com.truestayhere.meeting_scheduler.service.AvailabilityService;
 import jakarta.persistence.EntityNotFoundException;
@@ -95,7 +96,7 @@ public class AttendeeControllerTest {
                 attendeeDTO1.name(),
                 attendeeDTO1.email(),
                 "rawPassword",
-                "ROLE_USER",
+                Role.USER,
                 LocalTime.of(9, 0),
                 LocalTime.of(17, 0)
         );
@@ -104,7 +105,7 @@ public class AttendeeControllerTest {
                 attendeeDTO1.name() + " Updated",
                 "attendeeupdated@test.com",
                 "rawPasswordUpdated",
-                "ROLE_ADMIN",
+                Role.ADMIN,
                 LocalTime.of(10, 0),
                 LocalTime.of(18, 0)
         );
@@ -119,7 +120,7 @@ public class AttendeeControllerTest {
         String invalidEmail = "invalidEmailFormat";
         String validPassword = "validRawPassword";
         String shortPassword = "a".repeat(7);
-        String validRole = "ROLE_USER";
+        Role validRole = Role.USER;
         LocalTime validStartTime = LocalTime.of(9, 0);
         LocalTime validEndTime = LocalTime.of(17, 0);
         LocalTime sameTime = LocalTime.of(10, 0);
@@ -185,7 +186,7 @@ public class AttendeeControllerTest {
         String invalidEmail = "invalidEmailFormat";
         String validPassword = "validUpdatedRawPassword";
         String shortPassword = "a".repeat(7);
-        String validRole = "ROLE_USER";
+        Role validRole = Role.USER;
         LocalTime validStartTime = LocalTime.of(10, 0);
         LocalTime validEndTime = LocalTime.of(18, 0);
         LocalTime sameTime = LocalTime.of(10, 0);
@@ -257,7 +258,7 @@ public class AttendeeControllerTest {
     // === CREATE ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void createAttendee_whenValidInput_shouldReturn201CreatedAndAttendeeResponse() throws Exception {
         when(attendeeService.createAttendee(any(CreateAttendeeRequestDTO.class))).thenReturn(attendeeDTO1);
 
@@ -270,7 +271,7 @@ public class AttendeeControllerTest {
 
     @ParameterizedTest(name = "Validation Error: {0}")
     @MethodSource("invalidCreateRequestProvider")
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void createAttendee_whenInvalidInput_shouldReturn400BadRequest(
             String testCaseDescription,
             CreateAttendeeRequestDTO invalidRequest,
@@ -286,14 +287,14 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void createAttendee_whenWorkingTimeIsMalformedString_shouldReturn400BadRequest() throws Exception {
         String malformedJsonRequest = """
                 {
                     "name": "Attendee Name",
                     "email": "attendeename@test.com",
                     "password": "rawPassword",
-                    "role": "ROLE_USER",
+                    "role": "USER",
                     "workingStartTime": "INVALID-TIME-FORMAT",
                     "workingEndTime": "17:00"
                 }
@@ -308,7 +309,29 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
+    void createAttendee_whenRoleIsInvalid_shouldReturn400BadRequest() throws Exception {
+        String malformedJsonRequest = """
+                {
+                    "name": "Attendee Name",
+                    "email": "attendeename@test.com",
+                    "password": "rawPassword",
+                    "role": "INVALID_ROLE",
+                    "workingStartTime": "09:00",
+                    "workingEndTime": "17:00"
+                }
+                """;
+        ResultActions resultActions = mockMvc.perform(post("/api/attendees")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(malformedJsonRequest));
+
+        attendeeTestHelper.assertMalformedRequestError(resultActions);
+
+        verify(attendeeService, never()).createAttendee(any());
+    }
+
+    @Test
+    @WithMockUser(authorities = {"ADMIN"})
     void createAttendee_whenServiceThrowsDataIntegrityException_shouldReturn409Conflict() throws Exception {
         String expectedErrorMessage = "Database constraint violation occurred.";
         when(attendeeService.createAttendee(any(CreateAttendeeRequestDTO.class)))
@@ -326,7 +349,7 @@ public class AttendeeControllerTest {
     // === GET ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAllAttendees_shouldReturn200OkAndListOfAttendees() throws Exception {
         List<AttendeeDTO> expectedAttendees = List.of(attendeeDTO1, attendeeDTO2);
 
@@ -340,7 +363,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAllAttendees_whenNoAttendees_shouldReturn200OkAndEmptyList() throws Exception {
         when(attendeeService.getAllAttendees()).thenReturn(List.of());
 
@@ -352,7 +375,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAttendeeById_whenAttendeeExists_shouldReturn200OkAndAttendeeResponse() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         when(attendeeService.getAttendeeById(attendeeId)).thenReturn(attendeeDTO1);
@@ -365,7 +388,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAttendeeById_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentAttendeeId = 0L;
         String expectedErrorMessage = "Attendee not found with ID: " + nonExistentAttendeeId;
@@ -380,7 +403,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAttendeeById_whenIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception {
         String invalidId = "abc";
         String expectedErrorMessage = "Parameter 'id' should be of type 'Long' but received value: 'abc'.";
@@ -396,7 +419,7 @@ public class AttendeeControllerTest {
     // === UPDATE ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void updateAttendeeById_whenValidInputAndAttendeeExists_shouldReturn200OkAndUpdatedAttendeeResponse() throws Exception {
         Long attendeeIdToUpdate = attendeeDTO1.id();
 
@@ -416,7 +439,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void updateAttendeeById_whenNameIsNullInRequest_shouldUpdateOtherFieldsAndKeepExistingName() throws Exception {
         Long attendeeIdToUpdate = attendeeDTO1.id();
         String existingName = attendeeDTO1.name();
@@ -448,7 +471,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void updateAttendeeById_whenEmailIsNullInRequest_shouldUpdateOtherFieldsAndKeepExistingEmail() throws Exception {
         Long attendeeIdToUpdate = attendeeDTO1.id();
         String existingEmail = attendeeDTO1.email();
@@ -481,7 +504,7 @@ public class AttendeeControllerTest {
 
     @ParameterizedTest(name = "Validation Error: {0}")
     @MethodSource("invalidUpdateRequestProvider")
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void updateAttendee_whenInvalidInput_shouldReturn400BadRequest(
             String testCaseDescription,
             UpdateAttendeeRequestDTO invalidRequest,
@@ -498,7 +521,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void updateAttendeeById_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentAttendeeId = 0L;
         String expectedErrorMessage = "Attendee not found with ID: " + nonExistentAttendeeId;
@@ -512,7 +535,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void updateAttendeeById_whenServiceThrowsDataIntegrityException_shouldReturn409Conflict() throws Exception {
         Long attendeeIdToUpdate = attendeeDTO1.id();
         String expectedErrorMessage = "Database constraint violation occurred.";
@@ -527,7 +550,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void updateAttendeeById_whenIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception {
         String invalidId = "abc";
         String expectedErrorMessage = "Parameter 'id' should be of type 'Long' but received value: 'abc'.";
@@ -540,15 +563,11 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void updateAttendee_whenWorkingTimeIsMalformedString_shouldReturn400BadRequest() throws Exception {
         Long attendeeIdToUpdate = attendeeDTO1.id();
         String malformedJsonRequest = """
                 {
-                    "name": "Attendee Name Updated",
-                    "email": "attendeenameupdated@test.com",
-                    "password": "newRawPassword",
-                    "role": "ROLE_USER",
                     "workingStartTime": "INVALID-TIME-FORMAT",
                     "workingEndTime": "17:00"
                 }
@@ -562,12 +581,29 @@ public class AttendeeControllerTest {
         verify(attendeeService, never()).updateAttendee(anyLong(), any());
     }
 
+    @Test
+    @WithMockUser(authorities = {"ADMIN"})
+    void updateAttendee_whenRoleIsInvalid_shouldReturn400BadRequest() throws Exception {
+        String malformedJsonRequest = """
+                {
+                    "role": "INVALID_ROLE",
+                }
+                """;
+        ResultActions resultActions = mockMvc.perform(post("/api/attendees")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(malformedJsonRequest));
+
+        attendeeTestHelper.assertMalformedRequestError(resultActions);
+
+        verify(attendeeService, never()).createAttendee(any());
+    }
+
     // === END UPDATE ===
 
     // === DELETE ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void deleteAttendeeById_whenAttendeeExistsAndNotInUse_shouldReturn204NoContent() throws Exception {
         Long attendeeIdToDelete = attendeeDTO1.id();
         doNothing().when(attendeeService).deleteAttendee(attendeeIdToDelete);
@@ -581,7 +617,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void deleteAttendeeById_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentAttendeeId = 0L;
         String expectedErrorMessage = "Attendee not found with ID: " + nonExistentAttendeeId;
@@ -596,7 +632,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void deleteAttendeeById_whenAttendeeInUse_shouldReturn409Conflict() throws Exception {
         Long attendeeIdToDelete = attendeeDTO1.id();
         List<Long> conflictingMeetingIds = List.of(101L, 102L);
@@ -620,7 +656,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"ADMIN"})
     void deleteAttendeeById_whenIdIsInvalidFormat_shouldReturn400BadRequest() throws Exception {
         String invalidId = "abc";
         String expectedErrorMessage = "Parameter 'id' should be of type 'Long' but received value: '" + invalidId + "'.";
@@ -637,7 +673,7 @@ public class AttendeeControllerTest {
     // === AVAILABILITY ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAttendeeAvailability_whenAttendeeExistsAndValidDate_shouldReturn200OkAndListOfAvailableSlots() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         LocalDate date = DEFAULT_DATE;
@@ -666,7 +702,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAttendeeAvailability_whenAttendeeNotFound_shouldReturn404NotFound() throws Exception {
         Long nonExistentAttendeeId = 0L;
         LocalDate date = DEFAULT_DATE;
@@ -684,7 +720,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAttendeeAvailability_whenMissingDateParam_shouldReturn400BadRequest() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         String expectedErrorMessage = "Required parameter 'date' of type 'LocalDate' is missing.";
@@ -702,7 +738,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void getAttendeeAvailability_whenInvalidDateFormat_shouldReturn400BadRequest() throws Exception {
         Long attendeeId = attendeeDTO1.id();
         String invalidDateStr = "15-08-2024";
@@ -722,7 +758,7 @@ public class AttendeeControllerTest {
     // === COMMON AVAILABILITY ===
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void findCommonAttendeeAvailability_whenValidRequest_shouldReturn200OkAndCommonSlots() throws Exception {
         LocalDate date = DEFAULT_DATE;
         Set<Long> attendeeIds = Set.of(attendeeDTO1.id(), attendeeDTO2.id());
@@ -756,7 +792,7 @@ public class AttendeeControllerTest {
 
     @ParameterizedTest(name = "Validation Error: {0}")
     @MethodSource("invalidCommonAvailabilityRequestProvider")
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void findCommonAttendeeAvailability_whenInvalidInput_shouldReturn400BadRequest(
             String testCaseDescription,
             CommonAvailabilityRequestDTO invalidRequest,
@@ -772,7 +808,7 @@ public class AttendeeControllerTest {
     }
 
     @Test
-    @WithMockUser
+    @WithMockUser(authorities = {"USER"})
     void findCommonAttendeeAvailability_whenInvalidDateFormatInRequest_shouldReturn400BadRequest() throws Exception {
         String malformedJsonRequest = """
                 {

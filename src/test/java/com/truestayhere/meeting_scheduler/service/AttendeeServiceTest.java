@@ -7,6 +7,7 @@ import com.truestayhere.meeting_scheduler.exception.ResourceInUseException;
 import com.truestayhere.meeting_scheduler.mapper.AttendeeMapper;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.model.Meeting;
+import com.truestayhere.meeting_scheduler.model.Role;
 import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import com.truestayhere.meeting_scheduler.repository.MeetingRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -69,7 +70,7 @@ public class AttendeeServiceTest {
                 DEFAULT_ATTENDEE_NAME + " Updated",
                 "attendeeupdated@test.com",
                 DEFAULT_RAW_PASSWORD + "Update",
-                "ROLE_ADMIN",
+                Role.ADMIN,
                 LocalTime.of(12, 0),
                 LocalTime.of(19, 0)
         );
@@ -242,7 +243,7 @@ public class AttendeeServiceTest {
         Long attendeeId = DEFAULT_ATTENDEE_ID;
 
         UpdateAttendeeRequestDTO updateRequest = new UpdateAttendeeRequestDTO(
-                "Updated Name", "updated@example.com", null, "ROLE_ADMIN",
+                "Updated Name", "updated@example.com", null, Role.ADMIN,
                 LocalTime.of(10, 0), LocalTime.of(18, 0)
         );
 
@@ -251,7 +252,7 @@ public class AttendeeServiceTest {
         existingAttendee.setName("Original Name");
         existingAttendee.setEmail("original@example.com");
         existingAttendee.setPassword(DEFAULT_HASHED_PASSWORD);
-        existingAttendee.setRole("ROLE_USER");
+        existingAttendee.setRole(Role.USER);
         existingAttendee.setWorkingStartTime(LocalTime.of(9, 0));
         existingAttendee.setWorkingEndTime(LocalTime.of(17, 0));
 
@@ -284,7 +285,7 @@ public class AttendeeServiceTest {
         assertEquals("Updated Name", capturedEntity.getName());
         assertEquals("updated@example.com", capturedEntity.getEmail());
         assertEquals(DEFAULT_HASHED_PASSWORD, capturedEntity.getPassword(), "Password should not have changed.");
-        assertEquals("ROLE_ADMIN", capturedEntity.getRole());
+        assertEquals(Role.ADMIN.getValue(), capturedEntity.getRole().getValue());
 
         assertNotNull(result);
         assertEquals(expectedResponse, result);
@@ -299,7 +300,7 @@ public class AttendeeServiceTest {
         String newHashedPassword = "hashed-newPassword123";
 
         UpdateAttendeeRequestDTO updateRequestWithPassword = new UpdateAttendeeRequestDTO(
-                "Updated Name", "updated@example.com", newRawPassword, "ROLE_ADMIN",
+                "Updated Name", "updated@example.com", newRawPassword, Role.ADMIN,
                 LocalTime.of(10, 0), LocalTime.of(18, 0)
         );
 
@@ -336,7 +337,7 @@ public class AttendeeServiceTest {
         assertNotNull(capturedEntity);
         assertEquals("Updated Name", capturedEntity.getName());
         assertEquals("updated@example.com", capturedEntity.getEmail());
-        assertEquals("ROLE_ADMIN", capturedEntity.getRole());
+        assertEquals(Role.ADMIN.getValue(), capturedEntity.getRole().getValue());
         assertEquals(newHashedPassword, capturedEntity.getPassword(), "Password should have been updated to the new hashed value.");
         assertEquals(expectedResponse, result);
 
