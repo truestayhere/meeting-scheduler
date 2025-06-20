@@ -72,14 +72,17 @@ public class NullButNotEmptyValidatorTest {
 
     private record CollectionDTO(
             Collection<Long> attendeeIds
-    ) {}
+    ) {
+    }
 
     private record WithoutCollectionDTO(
-    ) {}
+    ) {
+    }
 
     private record WrongFieldTypeDTO(
             Object attendeeIds
-    ) {}
+    ) {
+    }
 
     @ParameterizedTest(name = "attendeeIds: {0}, Expected: {2}")
     @MethodSource("validationTestCases")

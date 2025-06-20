@@ -63,14 +63,14 @@ public class StartBeforeEndValidatorTest {
         UpdateMeetingRequestDTO dtoWithNullStart = new UpdateMeetingRequestDTO(
                 "Null Start",
                 null,
-                DEFAULT_DATE.atTime(13,0),
+                DEFAULT_DATE.atTime(13, 0),
                 1L,
                 Set.of(1L)
         );
 
         UpdateMeetingRequestDTO dtoWithNullEnd = new UpdateMeetingRequestDTO(
                 "Null End",
-                DEFAULT_DATE.atTime(13,0),
+                DEFAULT_DATE.atTime(13, 0),
                 null,
                 1L,
                 Set.of(1L)

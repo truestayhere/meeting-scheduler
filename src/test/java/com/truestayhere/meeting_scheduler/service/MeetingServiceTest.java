@@ -21,7 +21,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.test.context.support.WithMockUser;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -896,7 +895,7 @@ public class MeetingServiceTest {
                 mockAttendee1.getId(), defaultMeeting.getEndTime(), defaultMeeting.getStartTime())).thenReturn(List.of(defaultMeeting));
 
         MeetingDTO expectedResponse = new MeetingDTO(
-                meetingIdToUpdate, updateRequest.title(), null, null , null, null
+                meetingIdToUpdate, updateRequest.title(), null, null, null, null
         );
         when(meetingMapper.mapToMeetingDTO(any(Meeting.class))).thenReturn(expectedResponse);
 
@@ -1439,16 +1438,4 @@ public class MeetingServiceTest {
     }
 
     // ==== END DELETE ====
-
-    // ==== AVAILABILITY ====
-
-    // ...
-
-    // ==== END AVAILABILITY ====
-
-    // ==== SUGGESTIONS ====
-
-    // ...
-
-    // ==== END SUGGESTIONS ====
 }

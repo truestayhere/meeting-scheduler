@@ -1,6 +1,7 @@
 package com.truestayhere.meeting_scheduler.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.truestayhere.meeting_scheduler.AbstractIntegrationTest;
 import com.truestayhere.meeting_scheduler.model.Attendee;
 import com.truestayhere.meeting_scheduler.model.Role;
@@ -8,18 +9,15 @@ import com.truestayhere.meeting_scheduler.repository.AttendeeRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.springframework.http.MediaType;
-
-import java.util.Map;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @AutoConfigureMockMvc
 public class AuthenticationFlowIntegrationTest extends AbstractIntegrationTest {
@@ -51,7 +49,8 @@ public class AuthenticationFlowIntegrationTest extends AbstractIntegrationTest {
 
         String responseBody = result.getResponse().getContentAsString();
 
-        java.util.Map<String, String> responseMap = objectMapper.readValue(responseBody, new TypeReference<>() {});
+        java.util.Map<String, String> responseMap = objectMapper.readValue(responseBody, new TypeReference<>() {
+        });
 
         String token = responseMap.get("token");
 

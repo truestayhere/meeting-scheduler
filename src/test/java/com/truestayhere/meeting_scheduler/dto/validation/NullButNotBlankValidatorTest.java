@@ -59,14 +59,17 @@ public class NullButNotBlankValidatorTest {
 
     private record TitleDTO(
             String title
-    ) {}
+    ) {
+    }
 
     private record WithoutTitleDTO(
-    ) {}
+    ) {
+    }
 
     private record WrongFieldTypeDTO(
             Object title
-    ) {}
+    ) {
+    }
 
     @ParameterizedTest(name = "attendeeIds: {0}, Expected: {2}")
     @MethodSource("validationTestCases")
