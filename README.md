@@ -19,7 +19,7 @@ RESTful API для координации встреч, созданный на 
 ---
 ## Стек Технологий
 
-**Основной фреймворк: Java 17, Spring Boot 3.4** (современная LTS-версия с автоконфигурацией)
+**Основной фреймворк: Java 21, Spring Boot 3.4** (современная LTS-версия с автоконфигурацией)
 
 **Работа с данными: Spring Data JPA, Hibernate** (чистый ORM)
 
@@ -80,23 +80,23 @@ API предоставляет стандартные REST-эндпоинты д
 
 ## Быстрый старт
 
-1.  Убедитесь, что Docker Desktop запущен и установлен JDK 17.
+1.  Убедитесь, что Docker Desktop запущен и установлен JDK 21.
 2.  Клонируйте репозиторий: `git clone https://github.com/truestayhere/meeting-scheduler.git`
 3.  Запустите PostgreSQL в Docker контейнере:
     ```bash
-    docker run --name postgres-scheduler -e POSTGRES_DB=meeting_scheduler_db -e POSTGRES_USER=scheduler_user -e POSTGRES_PASSWORD=secure_password -p 5432:5432 -d postgres:15
+    docker run --name postgres-scheduler -e POSTGRES_DB=meeting_scheduler_db -e POSTGRES_USER=meeting_scheduler_db_user -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres:15 
     ```
 4. Установите переменные окружения в терминале или непосредственно в вашей IDE:
     ```bash
     export DB_URL="jdbc:postgresql://localhost:5432/meeting_scheduler_db"
-    export DB_USER="scheduler_user"
-    export DB_PASS="secure_password"
+    export DB_USER="meeting_scheduler_db_user"
+    export DB_PASS="password"
     export JWT_SECRET_KEY="dev-secret-key-that-is-long-enough-for-hs256"
     ```
 5.  Соберите и запустите приложение: `mvn spring-boot:run`
-6.  В **отдельном терминале**, создайте первоначального администратора (дефолтный пароль 'password123'):
+6.  В **отдельном терминале**, создайте первоначального администратора (дефолтный логин и пароль: 'admin@company.com', 'admin_password'):
     ```bash
-    docker exec -it postgres-scheduler psql -U scheduler_user -d meeting_scheduler_db -c "INSERT INTO attendee (name, email, password, role, version) VALUES ('Admin', 'admin@company.com', '\$2a\$10\$3g5vDbAfsKueJc0x23tLh.iGAKtStHwPrlqHAnHk2P2pMvBv99dOS', 'ADMIN', 0);"
+    docker exec -it postgres-scheduler psql -U meeting_scheduler_db_user -d meeting_scheduler_db -c 'INSERT INTO attendee (name, email, password, role, version) VALUES (''Admin'', ''admin@company.com'', ''$2a$10$FPwi3h05XyTwWPDdD21hNOjs7Y5jPsWEChA0ztNdFHUjxbfkJ3QHS'', ''ADMIN'', 0);'
     ```
 7. Откройте интерактивную API документацию (Swagger UI): [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
 
@@ -108,7 +108,7 @@ API предоставляет стандартные REST-эндпоинты д
 
 Убедитесь, что установлены и работают следующие компоненты:
 *   **Git:** Для клонирования репозитория.
-*   **JDK 17:** Проверьте версию с помощью `java --version`.
+*   **JDK 21:** Проверьте версию с помощью `java --version`.
 *   **Maven 3.9+:** Проверьте версию с помощью `mvn --version`.
 *   **Docker Desktop:** Требуется для тестирования и развертывания приложения.
 
