@@ -1,6 +1,6 @@
 # Meeting Scheduler API
 
-[![Java Version](https://img.shields.io/badge/Java-17-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html) [![Build Tool](https://img.shields.io/badge/Build-Maven-critical)](https://maven.apache.org/) [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html) [![Build Tool](https://img.shields.io/badge/Build-Maven-critical)](https://maven.apache.org/) [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 
 RESTful API для координации встреч, созданный на базе Java и Spring Boot. Приложение позволяет эффективно управлять планированием встреч благодаря функциям подбора времени, проверки на наличие конфликтов в расписании и контроля вместимости помещений.
 
