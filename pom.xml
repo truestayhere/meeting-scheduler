@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.truestayhere</groupId>
     <artifactId>meeting-scheduler</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <name>meeting-scheduler</name>
     <description>Application for managing meetings</description>
     <url/>
