@@ -19,21 +19,21 @@ RESTful API для координации встреч, созданный на 
 ---
 ## Стек Технологий
 
-**Основной фреймворк: Java 21, Spring Boot 3.4** (современная LTS-версия с автоконфигурацией)
+**Основной фреймворк: Java 21, Spring Boot 3.4** 
 
-**Работа с данными: Spring Data JPA, Hibernate** (чистый ORM)
+**Работа с данными: Spring Data JPA, Hibernate**
 
-**База данных: PostgreSQL** (реляционная БД)
+**База данных: PostgreSQL**
 
-**Безопасность: Spring Security 6, JWT** (stateless-аутентификация с RBAC)
+**Безопасность: Spring Security 6, JWT**
 
-**Тестирование: JUnit 5, Mockito, Testcontainers** (многоуровневое тестирование)
+**Тестирование: JUnit 5, Mockito, Testcontainers**
 
-**Сборка и развертывание: Maven, Docker** (контейнеризированная сборка)
+**Сборка и развертывание: Maven, Docker**
 
-**API документация: SpringDoc OpenAPI** (автогенерация Swagger UI)
+**API документация: SpringDoc OpenAPI**
 
-**Утилиты: Lombok, Jakarta Bean Validation** (уменьшение шаблонного кода, валидация данных)
+**Утилиты: Lombok, Jakarta Bean Validation**
 
 ## Обзор
 
